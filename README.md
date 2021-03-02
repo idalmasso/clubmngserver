@@ -1,0 +1,2 @@
+# clubmngserver
+Club manager server
