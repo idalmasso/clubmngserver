@@ -8,9 +8,15 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/context"
+	"github.com/gorilla/mux"
+	"github.com/idalmasso/clubmngserver/database"
 	model "github.com/idalmasso/clubmngserver/models"
 )
-
+func AddRouteEndpoints(r *mux.Router) *mux.Router {
+	apiRouter:=r.PathPrefix("/api").Subrouter()
+	addAuthRouterEndpoints(apiRouter)
+	return r
+}
 
 func sendJSONResponse(w http.ResponseWriter, data interface{}, statusCode int) {
 	body, err := json.Marshal(data)
@@ -27,8 +33,9 @@ func sendJSONResponse(w http.ResponseWriter, data interface{}, statusCode int) {
 		return
 	}
 }
-func checkTokenAuthenticationHandler(next http.HandlerFunc) http.HandlerFunc{
-	return func(w http.ResponseWriter, r *http.Request) {
+
+func checkTokenAuthenticationHandler(next http.Handler) http.Handler{
+	return http.HandlerFunc( func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")
 		bearerToken := strings.Split(header, " ")
 		if len(bearerToken)!=2{
@@ -54,16 +61,16 @@ func checkTokenAuthenticationHandler(next http.HandlerFunc) http.HandlerFunc{
 				return 
 			}
 			//check if username actually exists
-			user:= model.FindUser(r.Context(), username);
-			if user==nil{
+			user,err:= model.FindUser(r.Context(), username);
+			if err!=nil{
 				http.Error(w, "Unauthorized, user not exists", http.StatusUnauthorized)
 			}
 			//Set the username in the request, so I will use it in check after!
 			context.Set(r, "user", user)
 			context.Set(r, "authenticationtoken", bearerToken[1])
 		}
-    next(w, r)
-  }
+    next.ServeHTTP(w, r)
+  })
 }
 
 
@@ -94,8 +101,8 @@ func checkTokenAuthorizationHandler(next http.HandlerFunc) http.HandlerFunc{
 				return 
 			}
 			//check if username actually exists
-			user:= model.FindUser(r.Context(), username); 
-			if user==nil{
+			user,err:= model.FindUser(r.Context(), username); 
+			if err!=nil{
 				http.Error(w, "Unauthorized, user not exists", http.StatusUnauthorized)
 			}
 			//Set the username in the request, so I will use it in check after!
@@ -106,7 +113,7 @@ func checkTokenAuthorizationHandler(next http.HandlerFunc) http.HandlerFunc{
   }
 }
 func isUsernameContextOk(username string, r *http.Request) bool {
-	userCtx, ok:=context.Get(r, "user").(*model.UserDetails)
+	userCtx, ok:=context.Get(r, "user").(database.UserData)
 	if !ok{
 		return false
 	}

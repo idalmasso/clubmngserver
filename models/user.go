@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/idalmasso/clubmngserver/database"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -28,19 +29,11 @@ func getAuthenticationSecret() string{
 	return secret
 }
 
-
-type UserDetails struct {
-	Username string
-	Email string
-	PasswordHash []byte
-	AuthenticationTokens map[string] string
-	AuthorizationTokens map[string] struct{}
-}
-func (user *UserDetails) GetAuthenticatonAuthorizationToken() (string,string,  error){
-	return getAuthenticationAuthorizationTokens(user.Username)
+func  GetAuthenticatonAuthorizationToken(username string) (string,string,  error){
+	return getAuthenticationAuthorizationTokens(username)
 }
 
-func (user *UserDetails) TryAuthenticate(context context.Context, password string) (string,string,  error){
+func  TryAuthenticate(context context.Context, user database.UserData,  password string) (string,string,  error){
 	if err:=checkUserPassword(context,user.Username, password); err!=nil{
 		return "","", err
 	}
@@ -51,10 +44,11 @@ func (user *UserDetails) TryAuthenticate(context context.Context, password strin
 	var val struct {}
 	user.AuthenticationTokens[authentication]=authorization
 	user.AuthorizationTokens[authorization] = val
+	db.UpdateUser(context, user)
 	return authentication, authorization, nil
 }
 
-func (user *UserDetails) GetUserTokenForAuthenticationToken(authenticationToken string ) (string, error){
+func GetUserTokenForAuthenticationToken(context context.Context, authenticationToken string, user database.UserData ) (string, error){
 	authorization, err:= getAuthorizationToken(user.Username)
 	if err!= nil{
 		return "", err
@@ -62,44 +56,50 @@ func (user *UserDetails) GetUserTokenForAuthenticationToken(authenticationToken 
 	var val struct{}
 	user.AuthenticationTokens[authenticationToken] = authorization
 	user.AuthorizationTokens[authorization] = val
+	db.UpdateUser(context, user)
 	return authorization, nil
 }
 
-func (user *UserDetails) RemoveUserAuthentication(authenticationToken string) {
+func  RemoveUserAuthentication(user database.UserData,authenticationToken string) {
 	if author, ok:=user.AuthenticationTokens[authenticationToken]; ok{
 		delete(user.AuthorizationTokens, author)
 	}
 	delete(user.AuthenticationTokens, authenticationToken)
 }
 
-var users map[string]UserDetails=make(map[string]UserDetails, 0) 
-
-
-func FindUser(ctx context.Context, username string) *UserDetails {
-	u,ok:=users[username]
-	if !ok{
-		return nil
+func FindUser(ctx context.Context, username string) (database.UserData,error) {
+	u,err:=db.FindUser(ctx, username)
+	if err!=nil{
+		return database.UserData{}, err
 	}
-	return &u
+	return u, nil
 }
 
-func AddUser(user *UserDetails, password string) (UserDetails,error){
-	_, ok:=users[user.Username]
-	if ok{
-		return UserDetails{}, fmt.Errorf("Username already exists")
+func AddUser(ctx context.Context,user database.UserData, password string) (database.UserData,error){
+	if _,err:=db.FindUser(ctx, user.Username);	 err==nil{
+		return database.UserData{}, fmt.Errorf("Username already exists: %v",err)
 	}
-	passwordHash, err:=bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	user, err:=db.AddUser(ctx, user); 
 	if err!=nil{
-		return UserDetails{}, err
+		return database.UserData{}, err
+	} 
+	if err:=user.SetPassword(ctx, password, db); err!=nil{
+		return database.UserData{}, err
 	}
-	user.PasswordHash=passwordHash
-	users[user.Username] = *user
-	return users[user.Username], nil
+	return user, nil
+}
+
+func ChangePassword(ctx context.Context, user database.UserData, newPassword string)(database.UserData, error){
+	if err:=user.SetPassword(ctx, newPassword, db); err!=nil{
+		return database.UserData{},err
+	}
+
+	return user, nil
 }
 
 func checkUserPassword(context context.Context, username string, password string) error{
-	u:=FindUser(context,username)
-	if u==nil{
+	u,err:=FindUser(context,username)
+	if err!=nil{
 		return fmt.Errorf("Not found")
 	}
 	return bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(password))
