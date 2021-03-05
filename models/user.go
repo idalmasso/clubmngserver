@@ -8,27 +8,13 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/idalmasso/clubmngserver/database"
-	"golang.org/x/crypto/bcrypt"
 )
 
-func getAuthorizationSecret() string{
-	secret:=os.Getenv("ACCESS_SECRET_AUTHORIZATION")
-	if secret==""{
-		//That's surely a big secret this way...
-		secret="sdmalncnjsdsmfAuthorization"
-	}
-	return secret
-}
 
-func getAuthenticationSecret() string{
-	secret:=os.Getenv("ACCESS_SECRET_AUTHENTICATION")
-	if secret==""{
-		//That's surely a big secret this way...
-		secret="sdmalncnjsdsmf"
-	}
-	return secret
+func GetUsersList(ctx context.Context) ([]database.UserData, error){
+	users, err:=db.GetAllUsers(ctx)
+	return users,err
 }
-
 func  GetAuthenticatonAuthorizationToken(username string) (string,string,  error){
 	return getAuthenticationAuthorizationTokens(username)
 }
@@ -102,7 +88,7 @@ func checkUserPassword(context context.Context, username string, password string
 	if err!=nil{
 		return fmt.Errorf("Not found")
 	}
-	return bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(password))
+	return u.CheckPassword(password)
 }
 
 func CheckToken (tokenString string, authorizationToken bool) (*jwt.Token, bool) {
@@ -144,7 +130,6 @@ func createToken(username string, secret string, duration time.Duration) (string
   return token, nil
 }
 
-
 func getAuthenticationAuthorizationTokens(username string) (string, string, error){
 	authenticationToken, err:=createToken(username, getAuthenticationSecret(), time.Hour*24*15)
 		if err!=nil{
@@ -163,4 +148,22 @@ func getAuthorizationToken(username string) (string, error){
 		return "", err
 	}
 	return authorizationToken, nil
+}
+
+func getAuthorizationSecret() string{
+	secret:=os.Getenv("ACCESS_SECRET_AUTHORIZATION")
+	if secret==""{
+		//That's surely a big secret this way...
+		secret="sdmalncnjsdsmfAuthorization"
+	}
+	return secret
+}
+
+func getAuthenticationSecret() string{
+	secret:=os.Getenv("ACCESS_SECRET_AUTHENTICATION")
+	if secret==""{
+		//That's surely a big secret this way...
+		secret="sdmalncnjsdsmf"
+	}
+	return secret
 }

@@ -15,6 +15,8 @@ import (
 func AddRouteEndpoints(r *mux.Router) *mux.Router {
 	apiRouter:=r.PathPrefix("/api").Subrouter()
 	addAuthRouterEndpoints(apiRouter)
+	addRolesRouterEndpoints(apiRouter)
+	addUsersRouterEndpoints(apiRouter)
 	return r
 }
 

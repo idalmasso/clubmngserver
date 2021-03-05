@@ -8,5 +8,9 @@ type ClubDb interface{
 	AddUser(context.Context,UserData) (UserData,error)
 	UpdateUser(context.Context,UserData) (UserData,error)
 	RemoveUser(context.Context,UserData) error
-
+	AddRole(ctx context.Context,role SecurityRole) (SecurityRole,error)
+	UpdateRole(ctx context.Context,role SecurityRole) (SecurityRole,error)
+	RemoveRole(ctx context.Context,role SecurityRole) error
+	FindRole(ctx context.Context,roleName  string) (SecurityRole, error)
+	GetAllUsers(ctx context.Context) ([]UserData, error)
 }

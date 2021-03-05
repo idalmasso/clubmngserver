@@ -1,22 +1,6 @@
 package database
 
-type securityPrivileges int;
-const  (
-	SecurityAdmin securityPrivileges=iota
-	SecuritySelfUserView
-	SecuritySelfUserUpdate
-	SecuritySelfUserDelete
-	SecurityLinkedUsersView
-	SecurityLinkedUsersUpdate
-	SecurityLinkedUsersDelete
-	SecurityAllUsersUpdate
-	SecurityAllUsersView
-	SecurityAllUsersDelete
-	SecurityRolesView
-	SecurityRolesUpdate
-	SecurityRolesDelete
-	SecurityRolesToUserMaintain
-	SecuritySelfPaymentsView
-	SecurityLinkedUsersPaymentsView
-	SecurityAllUsersPaymentsView
-)
+type SecurityRole struct{
+	Name string
+	privileges []SecurityPrivilege
+}
