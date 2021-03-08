@@ -11,7 +11,7 @@ import (
 var routesRolesProtected =[...]string {"/logout", "/token"}
 //addAuthRouterEndpoints add the actual endpoints for auth api
 func addRolesRouterEndpoints(r *mux.Router) {
-	authRouter:=r.PathPrefix("/auth").Subrouter()
+	authRouter:=r.PathPrefix("/roles").Subrouter()
 	
 	reqRouter:=authRouter.MatcherFunc(func(r *http.Request,  rm *mux.RouteMatch) bool{
 		for _,route:=range(routesAuthProtected){
@@ -26,3 +26,5 @@ func addRolesRouterEndpoints(r *mux.Router) {
 	reqRouter.Use(checkTokenAuthenticationHandler)
 
 }
+
+

@@ -124,3 +124,21 @@ func isUsernameContextOk(username string, r *http.Request) bool {
 	}
 	return true
 }
+func checkUserHasPrivilegeMiddleware(privilege database.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
+	return func (next http.HandlerFunc) http.HandlerFunc{
+		return func(w http.ResponseWriter, r *http.Request) {
+			userCtx, ok:=context.Get(r, "user").(database.UserData); 
+			if !ok{
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			if authorized, err:=model.IsRoleAuthorized(r.Context(), userCtx.Role, privilege ); err!=nil || !authorized{
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			
+			next(w, r)
+		}
+	}
+}
