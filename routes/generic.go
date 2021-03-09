@@ -124,7 +124,7 @@ func isUsernameContextOk(username string, r *http.Request) bool {
 	}
 	return true
 }
-func checkUserHasPrivilegeMiddleware(privilege database.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
+func checkUserHasPrivilegeMiddleware(privileges ...database.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
 	return func (next http.HandlerFunc) http.HandlerFunc{
 		return func(w http.ResponseWriter, r *http.Request) {
 			userCtx, ok:=context.Get(r, "user").(database.UserData); 
@@ -132,13 +132,34 @@ func checkUserHasPrivilegeMiddleware(privilege database.SecurityPrivilege) func(
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-
-			if authorized, err:=model.IsRoleAuthorized(r.Context(), userCtx.Role, privilege ); err!=nil || !authorized{
-				w.WriteHeader(http.StatusUnauthorized)
-				return
+			for _,privilege:=range(privileges){
+				if authorized, err:=model.IsRoleAuthorized(r.Context(), userCtx.Role, privilege ); err!=nil || !authorized{
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
 			}
 			
 			next(w, r)
+		}
+	}
+}
+
+func checkUserHasAtLeastOnePrivilegeMiddleware(privileges ...database.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
+	return func (next http.HandlerFunc) http.HandlerFunc{
+		return func(w http.ResponseWriter, r *http.Request) {
+			userCtx, ok:=context.Get(r, "user").(database.UserData); 
+			if !ok{
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			for _,privilege:=range(privileges){
+				if authorized, err:=model.IsRoleAuthorized(r.Context(), userCtx.Role, privilege ); err==nil && authorized{
+					next(w,r)
+					return
+				}
+			}
+			
+			w.WriteHeader(http.StatusUnauthorized)
 		}
 	}
 }

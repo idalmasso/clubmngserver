@@ -55,10 +55,10 @@ func  RemoveUserAuthentication(user database.UserData,authenticationToken string
 
 func FindUser(ctx context.Context, username string) (database.UserData,error) {
 	u,err:=db.FindUser(ctx, username)
-	if err!=nil{
+	if u==nil{
 		return database.UserData{}, err
 	}
-	return u, nil
+	return *u, nil
 }
 
 func AddUser(ctx context.Context,user database.UserData, password string) (database.UserData,error){
@@ -167,3 +167,4 @@ func getAuthenticationSecret() string{
 	}
 	return secret
 }
+

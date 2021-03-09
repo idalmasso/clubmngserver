@@ -17,8 +17,8 @@ func (db *MemoryDB) Init(){
 		db.roles=make(map[string]SecurityRole)
 		var adminRole SecurityRole
 		adminRole.Name="Admin"
-		adminRole.privileges= make([]SecurityPrivilege, 0)
-		adminRole.privileges = append(adminRole.privileges, SecurityAdmin)
+		adminRole.Privileges= make([]SecurityPrivilege, 0)
+		adminRole.Privileges = append(adminRole.Privileges, SecurityAdmin)
 		db.AddRole(context.Background(), adminRole) 
 	}
 	if db.users==nil{
@@ -34,12 +34,12 @@ func (db *MemoryDB) Init(){
 	}
 }
 
-func (db *MemoryDB) FindUser(ctx context.Context,username  string) (UserData, error){
+func (db *MemoryDB) FindUser(ctx context.Context,username  string) (*UserData, error){
 	u, ok:=db.users[username]
 	if !ok{
-		return UserData{}, fmt.Errorf("Not found")
+		return nil, nil
 	}
-	return u, nil
+	return &u, nil
 }
 
 func (db *MemoryDB) GetAllUsers(ctx context.Context) ([]UserData, error){
@@ -49,6 +49,15 @@ func (db *MemoryDB) GetAllUsers(ctx context.Context) ([]UserData, error){
 	}
 	return uData, nil
 } 
+func (db *MemoryDB) GetAllUsersWithRole(ctx context.Context, roleName string) ([]UserData, error){
+	var uData []UserData
+	for _,u:=range(db.users){
+		if u.Role==roleName{
+			uData=append(uData, u)
+		}
+	}
+	return uData, nil
+}
 
 func (db *MemoryDB) AddUser(ctx context.Context,user UserData) (UserData,error){
 	_, ok:=db.users[user.Username]
@@ -75,20 +84,20 @@ func (db *MemoryDB) RemoveUser(ctx context.Context,user UserData) error{
 	delete(db.users, user.Username)
 	return nil
 }
-func (db *MemoryDB) FindRole(ctx context.Context,roleName  string) (SecurityRole, error){
+func (db *MemoryDB) FindRole(ctx context.Context,roleName  string) (*SecurityRole, error){
 	role, ok:=db.roles[roleName]
 	if !ok{
-		return SecurityRole{}, fmt.Errorf("Not found")
+		return nil, nil
 	}
-	return role, nil
+	return &role, nil
 }
 func (db *MemoryDB) AddRole(ctx context.Context,role SecurityRole) (SecurityRole,error){
 	_, ok:=db.roles[role.Name]
 	if ok{
 		return SecurityRole{}, fmt.Errorf("Role already exists")
 	}
-	if role.privileges ==nil{
-		role.privileges=make([]SecurityPrivilege, 0)
+	if role.Privileges ==nil{
+		role.Privileges=make([]SecurityPrivilege, 0)
 	}
 	
 	db.roles[role.Name]=role
@@ -104,4 +113,12 @@ func (db *MemoryDB) UpdateRole(ctx context.Context,role SecurityRole) (SecurityR
 func (db *MemoryDB) RemoveRole(ctx context.Context,role SecurityRole) error{
 	delete(db.roles, role.Name)
 	return nil
+}
+
+func (db *MemoryDB) GetAllRoles(ctx context.Context) ([]SecurityRole, error){
+	var roles []SecurityRole
+	for _,role:=range(db.roles){
+		roles=append(roles, role)
+	}
+	return roles, nil
 }

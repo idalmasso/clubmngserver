@@ -14,7 +14,7 @@ var routesUsersProtected =[...]string {"/logout", "/token"}
 func addUsersRouterEndpoints(r *mux.Router) {
 	usersRoute:=r.PathPrefix("/users").Subrouter()
 	usersRoute.Use(checkTokenAuthenticationHandler)
-	usersRoute.HandleFunc("/", checkUserHasPrivilegeMiddleware(database.SecurityAllUsersView)(allUsers))
+	usersRoute.HandleFunc("/", checkUserHasPrivilegeMiddleware(database.SecurityAllUsersView)(allUsers)).Methods("GET")
 	//usersRoute.HandleFunc("/", allUsers)
 }
 
