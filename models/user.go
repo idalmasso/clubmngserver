@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/idalmasso/clubmngserver/database"
+	"github.com/idalmasso/clubmngserver/common"
 )
 
 
-func GetUsersList(ctx context.Context) ([]database.UserData, error){
+func GetUsersList(ctx context.Context) ([]common.UserData, error){
 	users, err:=db.GetAllUsers(ctx)
 	return users,err
 }
@@ -19,7 +19,7 @@ func  GetAuthenticatonAuthorizationToken(username string) (string,string,  error
 	return getAuthenticationAuthorizationTokens(username)
 }
 
-func  TryAuthenticate(context context.Context, user database.UserData,  password string) (string,string,  error){
+func  TryAuthenticate(context context.Context, user common.UserData,  password string) (string,string,  error){
 	if err:=checkUserPassword(context,user.Username, password); err!=nil{
 		return "","", err
 	}
@@ -34,7 +34,7 @@ func  TryAuthenticate(context context.Context, user database.UserData,  password
 	return authentication, authorization, nil
 }
 
-func GetUserTokenForAuthenticationToken(context context.Context, authenticationToken string, user database.UserData ) (string, error){
+func GetUserTokenForAuthenticationToken(context context.Context, authenticationToken string, user common.UserData ) (string, error){
 	authorization, err:= getAuthorizationToken(user.Username)
 	if err!= nil{
 		return "", err
@@ -46,40 +46,47 @@ func GetUserTokenForAuthenticationToken(context context.Context, authenticationT
 	return authorization, nil
 }
 
-func  RemoveUserAuthentication(user database.UserData,authenticationToken string) {
+func  RemoveUserAuthentication(user common.UserData,authenticationToken string) {
 	if author, ok:=user.AuthenticationTokens[authenticationToken]; ok{
 		delete(user.AuthorizationTokens, author)
 	}
 	delete(user.AuthenticationTokens, authenticationToken)
 }
 
-func FindUser(ctx context.Context, username string) (database.UserData,error) {
+func FindUser(ctx context.Context, username string) (common.UserData,error) {
 	u,err:=db.FindUser(ctx, username)
 	if u==nil{
-		return database.UserData{}, err
+		return common.UserData{}, err
 	}
 	return *u, nil
 }
 
-func AddUser(ctx context.Context,user database.UserData, password string) (database.UserData,error){
+func AddUser(ctx context.Context,user common.UserData, password string) (common.UserData,error){
 	if _,err:=db.FindUser(ctx, user.Username);	 err==nil{
-		return database.UserData{}, fmt.Errorf("Username already exists: %v",err)
+		return common.UserData{}, fmt.Errorf("Username already exists: %v",err)
 	}
 	user, err:=db.AddUser(ctx, user); 
 	if err!=nil{
-		return database.UserData{}, err
+		return common.UserData{}, err
 	} 
-	if err:=user.SetPassword(ctx, password, db); err!=nil{
-		return database.UserData{}, err
+	if err:=user.SetPassword(ctx, password); err!=nil{
+		return common.UserData{}, err
+	}
+	user, err=db.UpdateUser(ctx, user)
+	if err!=nil{
+		return common.UserData{}, err
 	}
 	return user, nil
 }
 
-func ChangePassword(ctx context.Context, user database.UserData, newPassword string)(database.UserData, error){
-	if err:=user.SetPassword(ctx, newPassword, db); err!=nil{
-		return database.UserData{},err
+func ChangePassword(ctx context.Context, user common.UserData, newPassword string)(common.UserData, error){
+if err:=user.SetPassword(ctx, newPassword); err!=nil{
+		return common.UserData{}, err
 	}
-
+	user, err:=db.UpdateUser(ctx, user)
+	if err!=nil{
+		return common.UserData{}, err
+	}
 	return user, nil
 }
 

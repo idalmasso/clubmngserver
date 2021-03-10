@@ -7,13 +7,16 @@ import (
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"github.com/idalmasso/clubmngserver/database"
+	"github.com/idalmasso/clubmngserver/common"
 	model "github.com/idalmasso/clubmngserver/models"
 )
+
+//UserPassword is the type the user send with username and password for authentication
 type UserPassword struct{
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+//TokensResponse is the response type with one or two authentication tokens
 type TokensResponse struct{
 	AuthenticationToken string `json:"authentication"`
 	AuthorizationToken string `json:"authorization"`
@@ -63,7 +66,7 @@ func login(w http.ResponseWriter, r *http.Request){
 }
 
 func logout(w http.ResponseWriter, r *http.Request){
-	u :=context.Get(r, "user").(database.UserData)
+	u :=context.Get(r, "user").(common.UserData)
 	var authenticationToken string
 	authenticationToken = context.Get(r, "authenticationtoken").(string)
 	model.RemoveUserAuthentication(u,authenticationToken)
@@ -81,7 +84,7 @@ func createUser(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
-	var newUser database.UserData
+	var newUser common.UserData
 	newUser.Username=u.Username
 
 	newUser, err=model.AddUser(r.Context(),newUser, u.Password)

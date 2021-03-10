@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/idalmasso/clubmngserver/database"
+	"github.com/idalmasso/clubmngserver/database/memdb"
 	"github.com/idalmasso/clubmngserver/models"
 	"github.com/idalmasso/clubmngserver/routes"
 	"github.com/joho/godotenv"
@@ -20,7 +21,7 @@ func main(){
     log.Fatalf("Error loading .env file")
   }
 
-	var memDB database.MemoryDB
+	var memDB memdb.MemoryDB
 	var db database.ClubDb =   &memDB    // Verify that T implements I.
 	
 	models.InitDB(&db)
@@ -33,6 +34,7 @@ func main(){
 	fmt.Println("Listening")	
 	log.Panic(
 		http.ListenAndServe(":"+os.Getenv("SERVER_PORT"), nil),
+		
 	)
 }
 

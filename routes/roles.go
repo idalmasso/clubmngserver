@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	database "github.com/idalmasso/clubmngserver/database"
+	"github.com/idalmasso/clubmngserver/common"
 	model "github.com/idalmasso/clubmngserver/models"
 )
 
@@ -16,7 +16,7 @@ type RoleStructValue struct{
 	Privileges []string `json:"privileges"` 
 }
 
-func (roleValue *RoleStructValue) initFromDBRole(role database.SecurityRole){
+func (roleValue *RoleStructValue) initFromDBRole(role common.SecurityRole){
 	roleValue.Name=role.Name
 	for _,privilege:=range(role.Privileges){
 		pStr, err:=privilege.String()
@@ -26,10 +26,10 @@ func (roleValue *RoleStructValue) initFromDBRole(role database.SecurityRole){
 	}
 }
 
-func  (roleValue *RoleStructValue)  toDBRole()( database.SecurityRole) {
-	role:=database.SecurityRole{Name: roleValue.Name}
+func  (roleValue *RoleStructValue)  toDBRole()( common.SecurityRole) {
+	role:=common.SecurityRole{Name: roleValue.Name}
 	for _, privilegeStr:=range(roleValue.Privileges){
-		privilege, err:=database.StringToSecurityPrivilege(privilegeStr)
+		privilege, err:=common.StringToSecurityPrivilege(privilegeStr)
 		if err==nil{
 			role.Privileges=append(role.Privileges, privilege)
 		}
@@ -41,16 +41,16 @@ func addRolesRouterEndpoints(r *mux.Router) {
 	reqRouter:=r.PathPrefix("/roles").Subrouter()
 	privRouter:=r.PathPrefix("/privileges").Subrouter()
 	reqRouter.Use(checkTokenAuthenticationHandler)
-	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(database.SecurityRolesView)(allRoles)).Methods("GET")
-	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(database.SecurityRolesView)(viewRole)).Methods("GET")
-	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(database.SecurityRolesUpdate)(addRole)).Methods("POST")
-	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(database.SecurityRolesUpdate)(updateRole)).Methods("PUT")
-	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(database.SecurityRolesUpdate)(removeRole)).Methods("DELETE")
-	privRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(database.SecurityRolesView)(listPrivileges)).Methods("GET")
+	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(allRoles)).Methods("GET")
+	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(viewRole)).Methods("GET")
+	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityRolesUpdate)(addRole)).Methods("POST")
+	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(common.SecurityRolesUpdate)(updateRole)).Methods("PUT")
+	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(common.SecurityRolesUpdate)(removeRole)).Methods("DELETE")
+	privRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(listPrivileges)).Methods("GET")
 }
 
 func listPrivileges(w http.ResponseWriter, r *http.Request){
-	privileges:=database.ListPrivileges()
+	privileges:=common.ListPrivileges()
 	sendJSONResponse(w,privileges,http.StatusOK )
 }
 

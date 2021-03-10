@@ -3,43 +3,16 @@ package database
 import (
 	"context"
 
-	"golang.org/x/crypto/bcrypt"
+	"github.com/idalmasso/clubmngserver/common"
 )
 
-
-type UserData struct {
-	Username string
-	Email string
-	passwordHash []byte
-	AuthenticationTokens map[string] string
-	AuthorizationTokens map[string] struct{}
-	Role string
+//UserAuthDBInterface interface for a database to implement to users mng and auth
+type UserAuthDBInterface interface{
+	FindUser(context.Context, string) (*common.UserData, error)
+	AddUser(context.Context,common.UserData) (common.UserData,error)
+	UpdateUser(context.Context,common.UserData) (common.UserData,error)
+	RemoveUser(context.Context,common.UserData) error
+	GetAllUsers(ctx context.Context) ([]common.UserData, error)
+	GetAllUsersWithRole(ctx context.Context, roleName string)([]common.UserData, error)	
 }
 
-func (user *UserData) SetPassword(ctx context.Context, password string, db ClubDb) error {
-	passwordHash, err:=bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err!=nil{
-		return  err
-	}
-	user.passwordHash=passwordHash
-	*user, err=db.UpdateUser(ctx, *user)
-	if err!=nil{
-		return  err
-	} 
-	return nil
-}
-func (user *UserData) CheckPassword(password string) error{
-		return bcrypt.CompareHashAndPassword(user.passwordHash, []byte(password))
-}
-
-func (user *UserData) AddRole(ctx context.Context,roleName string,db ClubDb) error{
-	_, err:=db.FindRole(ctx, roleName)
-	if err!=nil{
-		return err
-	}
-	user.Role=roleName
-	if _, err=db.UpdateUser(ctx, *user); err!=nil{
-		return err
-	}
-	return nil
-}

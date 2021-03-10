@@ -9,9 +9,11 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"github.com/idalmasso/clubmngserver/database"
+	"github.com/idalmasso/clubmngserver/common"
 	model "github.com/idalmasso/clubmngserver/models"
 )
+
+//AddRouteEndpoints build the mux router with all endpoints
 func AddRouteEndpoints(r *mux.Router) *mux.Router {
 	apiRouter:=r.PathPrefix("/api").Subrouter()
 	addAuthRouterEndpoints(apiRouter)
@@ -115,7 +117,7 @@ func checkTokenAuthorizationHandler(next http.HandlerFunc) http.HandlerFunc{
   }
 }
 func isUsernameContextOk(username string, r *http.Request) bool {
-	userCtx, ok:=context.Get(r, "user").(database.UserData)
+	userCtx, ok:=context.Get(r, "user").(common.UserData)
 	if !ok{
 		return false
 	}
@@ -124,10 +126,10 @@ func isUsernameContextOk(username string, r *http.Request) bool {
 	}
 	return true
 }
-func checkUserHasPrivilegeMiddleware(privileges ...database.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
+func checkUserHasPrivilegeMiddleware(privileges ...common.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
 	return func (next http.HandlerFunc) http.HandlerFunc{
 		return func(w http.ResponseWriter, r *http.Request) {
-			userCtx, ok:=context.Get(r, "user").(database.UserData); 
+			userCtx, ok:=context.Get(r, "user").(common.UserData); 
 			if !ok{
 				w.WriteHeader(http.StatusUnauthorized)
 				return
@@ -144,10 +146,10 @@ func checkUserHasPrivilegeMiddleware(privileges ...database.SecurityPrivilege) f
 	}
 }
 
-func checkUserHasAtLeastOnePrivilegeMiddleware(privileges ...database.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
+func checkUserHasAtLeastOnePrivilegeMiddleware(privileges ...common.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
 	return func (next http.HandlerFunc) http.HandlerFunc{
 		return func(w http.ResponseWriter, r *http.Request) {
-			userCtx, ok:=context.Get(r, "user").(database.UserData); 
+			userCtx, ok:=context.Get(r, "user").(common.UserData); 
 			if !ok{
 				w.WriteHeader(http.StatusUnauthorized)
 				return

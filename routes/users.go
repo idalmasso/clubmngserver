@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/idalmasso/clubmngserver/database"
+	"github.com/idalmasso/clubmngserver/common"
 	model "github.com/idalmasso/clubmngserver/models"
 )
 
@@ -14,7 +14,7 @@ var routesUsersProtected =[...]string {"/logout", "/token"}
 func addUsersRouterEndpoints(r *mux.Router) {
 	usersRoute:=r.PathPrefix("/users").Subrouter()
 	usersRoute.Use(checkTokenAuthenticationHandler)
-	usersRoute.HandleFunc("/", checkUserHasPrivilegeMiddleware(database.SecurityAllUsersView)(allUsers)).Methods("GET")
+	usersRoute.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityAllUsersView)(allUsers)).Methods("GET")
 	//usersRoute.HandleFunc("/", allUsers)
 }
 

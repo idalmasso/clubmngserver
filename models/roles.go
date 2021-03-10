@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/idalmasso/clubmngserver/database"
+	"github.com/idalmasso/clubmngserver/common"
 )
 
-func AddRole(ctx context.Context, roleName string, privileges ...database.SecurityPrivilege) ( *database.SecurityRole,error) {
+func AddRole(ctx context.Context, roleName string, privileges ...common.SecurityPrivilege) ( *common.SecurityRole,error) {
 	role, err:=db.FindRole(ctx, roleName)
 	if err!=nil{
 		return nil,err
@@ -15,7 +15,7 @@ func AddRole(ctx context.Context, roleName string, privileges ...database.Securi
 	if role!=nil{
 		return role, fmt.Errorf("User already exists")
 	}
-	newRole:= database.SecurityRole{Name: roleName , Privileges: privileges}
+	newRole:= common.SecurityRole{Name: roleName , Privileges: privileges}
 	theNewRole, err := db.AddRole(ctx, newRole); 
 	if err!=nil{
 		return nil,err
@@ -42,7 +42,7 @@ func DeleteRole(ctx context.Context, roleName string) error {
 }
 
 
-func UpdateRole(ctx context.Context, roleName string, privileges ...database.SecurityPrivilege) error {
+func UpdateRole(ctx context.Context, roleName string, privileges ...common.SecurityPrivilege) error {
 	role, err:=db.FindRole(ctx, roleName)
 	if err!=nil{
 		return err
@@ -56,37 +56,42 @@ func UpdateRole(ctx context.Context, roleName string, privileges ...database.Sec
 	return err
 }
 
-func GetRole(ctx context.Context, roleName string) (*database.SecurityRole, error){
+func GetRole(ctx context.Context, roleName string) (*common.SecurityRole, error){
 	role, err:=db.FindRole(ctx, roleName)
 	return role, err
 }
 
-func GetAllRoles(ctx context.Context) ([]database.SecurityRole, error){
+func GetAllRoles(ctx context.Context) ([]common.SecurityRole, error){
 	return db.GetAllRoles(ctx)
 }
 
-func AddRoleToUser(ctx context.Context, user database.UserData ,roleName string)error{
-	if err:=user.AddRole(ctx, roleName, db); err!=nil{
+func AddRoleToUser(ctx context.Context, user common.UserData ,roleName string)error{
+	role, err:=db.FindRole(ctx, roleName)
+	if err!=nil{
+		return err
+	}
+	user.AddRole(ctx, *role)
+	if _, err:=db.UpdateUser(ctx, user); err!=nil{
 		return err
 	}
 	return nil
 }
 
-func IsRoleAuthorized(ctx context.Context, roleName string, privilege database.SecurityPrivilege) (bool,error){
+func IsRoleAuthorized(ctx context.Context, roleName string, privilege common.SecurityPrivilege) (bool,error){
 	role, err:=db.FindRole(ctx, roleName)
 	if err!=nil{
 		return false, err
 	}
-	if role.HasPrivilege(privilege) || role.HasPrivilege(database.SecurityAdmin) {
+	if role.HasPrivilege(privilege) || role.HasPrivilege(common.SecurityAdmin) {
 		return true, nil
 	}
 	return false, nil
 }
 
-func GetUserRole(ctx context.Context, user database.UserData) (database.SecurityRole, error){
+func GetUserRole(ctx context.Context, user common.UserData) (common.SecurityRole, error){
 	role, err:=db.FindRole(ctx, user.Role)
 	if err!=nil{
-		return database.SecurityRole{}, err
+		return common.SecurityRole{}, err
 	}
 	return *role, nil
 }
