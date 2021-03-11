@@ -7,6 +7,7 @@ import (
 	"github.com/idalmasso/clubmngserver/common"
 )
 
+//AddRole tries to add a role with name roleName and privileges passed
 func AddRole(ctx context.Context, roleName string, privileges ...common.SecurityPrivilege) ( *common.SecurityRole,error) {
 	role, err:=db.FindRole(ctx, roleName)
 	if err!=nil{
@@ -20,9 +21,9 @@ func AddRole(ctx context.Context, roleName string, privileges ...common.Security
 	if err!=nil{
 		return nil,err
 	}
-	return &theNewRole, nil
+	return theNewRole, nil
 }
-
+//DeleteRole deletes a role with name roleName
 func DeleteRole(ctx context.Context, roleName string) error {
 	role, err:=db.FindRole(ctx, roleName)
 	if err!=nil{
@@ -41,7 +42,7 @@ func DeleteRole(ctx context.Context, roleName string) error {
 	return db.RemoveRole(ctx, *role)
 }
 
-
+//UpdateRole updates the privileges inside the role with name roleName
 func UpdateRole(ctx context.Context, roleName string, privileges ...common.SecurityPrivilege) error {
 	role, err:=db.FindRole(ctx, roleName)
 	if err!=nil{
@@ -55,28 +56,25 @@ func UpdateRole(ctx context.Context, roleName string, privileges ...common.Secur
 	
 	return err
 }
-
+//GetRole returns the role called roleName
 func GetRole(ctx context.Context, roleName string) (*common.SecurityRole, error){
 	role, err:=db.FindRole(ctx, roleName)
 	return role, err
 }
-
+//GetAllRoles returns the list of all securityRoles
 func GetAllRoles(ctx context.Context) ([]common.SecurityRole, error){
 	return db.GetAllRoles(ctx)
 }
-
-func AddRoleToUser(ctx context.Context, user common.UserData ,roleName string)error{
+//AddRoleToUser adds the role with name roleName to the user
+func AddRoleToUser(ctx context.Context, user common.UserData ,roleName string) (*common.UserData,error){
 	role, err:=db.FindRole(ctx, roleName)
 	if err!=nil{
-		return err
+		return nil,err
 	}
 	user.AddRole(ctx, *role)
-	if _, err:=db.UpdateUser(ctx, user); err!=nil{
-		return err
-	}
-	return nil
+	return db.UpdateUser(ctx, user); 
 }
-
+//IsRoleAuthorized returns true if a role with roleName is enabled for a privilege
 func IsRoleAuthorized(ctx context.Context, roleName string, privilege common.SecurityPrivilege) (bool,error){
 	role, err:=db.FindRole(ctx, roleName)
 	if err!=nil{
@@ -87,12 +85,12 @@ func IsRoleAuthorized(ctx context.Context, roleName string, privilege common.Sec
 	}
 	return false, nil
 }
-
-func GetUserRole(ctx context.Context, user common.UserData) (common.SecurityRole, error){
+//GetUserRole returns the role object for a user
+func GetUserRole(ctx context.Context, user common.UserData) (*common.SecurityRole, error){
 	role, err:=db.FindRole(ctx, user.Role)
 	if err!=nil{
-		return common.SecurityRole{}, err
+		return nil, err
 	}
-	return *role, nil
+	return role, nil
 }
 

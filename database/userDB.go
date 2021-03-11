@@ -9,8 +9,8 @@ import (
 //UserAuthDBInterface interface for a database to implement to users mng and auth
 type UserAuthDBInterface interface{
 	FindUser(context.Context, string) (*common.UserData, error)
-	AddUser(context.Context,common.UserData) (common.UserData,error)
-	UpdateUser(context.Context,common.UserData) (common.UserData,error)
+	AddUser(context.Context,common.UserData) (*common.UserData,error)
+	UpdateUser(context.Context,common.UserData) (*common.UserData,error)
 	RemoveUser(context.Context,common.UserData) error
 	GetAllUsers(ctx context.Context) ([]common.UserData, error)
 	GetAllUsersWithRole(ctx context.Context, roleName string)([]common.UserData, error)	

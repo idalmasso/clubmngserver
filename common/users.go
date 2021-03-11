@@ -3,17 +3,18 @@ package common
 import (
 	"context"
 
+	"github.com/idalmasso/clubmngserver/common/userprops"
 	"golang.org/x/crypto/bcrypt"
 )
 
 //UserData is the actual data of a user. TBD: create map[string]UserAttribute, create UserAttribute{type , value {}} for attributes and manage them (so, no email!)
 type UserData struct {
 	Username string
-	Email string
 	passwordHash []byte
 	AuthenticationTokens map[string] string
 	AuthorizationTokens map[string] struct{}
 	Role string
+	properties map[string]userprops.UserProperty
 }
 //SetPassword sets the password to the user 
 func (user *UserData) SetPassword(ctx context.Context, password string) error {

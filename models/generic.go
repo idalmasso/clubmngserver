@@ -9,7 +9,7 @@ import (
 
 
 var db database.ClubDb
-
+//InitDB calls the actual initialization of the database and also insert the basic data in it
 func InitDB(database *database.ClubDb){
 	db=*database
 	db.Init()
@@ -45,7 +45,7 @@ func initTryAddAdmin(adminRoleName, adminUserName, adminUserPassword string){
 	}
 	if uData==nil{
 		uData.Username=adminUserName
-		*uData, err=db.AddUser(context.Background(), *uData)
+		uData, err=db.AddUser(context.Background(), *uData)
 		if err!=nil{
 			panic("Cannot create admin user")
 		}

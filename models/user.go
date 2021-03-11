@@ -10,15 +10,16 @@ import (
 	"github.com/idalmasso/clubmngserver/common"
 )
 
-
+//GetUsersList return a list of all users
 func GetUsersList(ctx context.Context) ([]common.UserData, error){
 	users, err:=db.GetAllUsers(ctx)
 	return users,err
 }
-func  GetAuthenticatonAuthorizationToken(username string) (string,string,  error){
+//GetAuthenticatonAuthorizationToken returns new authentication and authorization tokens for user with name username
+func  GetAuthenticatonAuthorizationToken(username string) (string,string, error){
 	return getAuthenticationAuthorizationTokens(username)
 }
-
+//TryAuthenticate tries to authenticate the user with a password passed. If ok, it sets and returns also the two tokens
 func  TryAuthenticate(context context.Context, user common.UserData,  password string) (string,string,  error){
 	if err:=checkUserPassword(context,user.Username, password); err!=nil{
 		return "","", err
@@ -33,7 +34,7 @@ func  TryAuthenticate(context context.Context, user common.UserData,  password s
 	db.UpdateUser(context, user)
 	return authentication, authorization, nil
 }
-
+//GetUserTokenForAuthenticationToken get a new Authorizationtoken and set it in the user for an existing authorization token
 func GetUserTokenForAuthenticationToken(context context.Context, authenticationToken string, user common.UserData ) (string, error){
 	authorization, err:= getAuthorizationToken(user.Username)
 	if err!= nil{
@@ -45,49 +46,41 @@ func GetUserTokenForAuthenticationToken(context context.Context, authenticationT
 	db.UpdateUser(context, user)
 	return authorization, nil
 }
-
+//RemoveUserAuthentication removes a token from a user/invalidate an authentication user token so it cannot be used anymore
 func  RemoveUserAuthentication(user common.UserData,authenticationToken string) {
 	if author, ok:=user.AuthenticationTokens[authenticationToken]; ok{
 		delete(user.AuthorizationTokens, author)
 	}
 	delete(user.AuthenticationTokens, authenticationToken)
 }
-
-func FindUser(ctx context.Context, username string) (common.UserData,error) {
-	u,err:=db.FindUser(ctx, username)
-	if u==nil{
-		return common.UserData{}, err
-	}
-	return *u, nil
+//FindUser finds an actual user
+func FindUser(ctx context.Context, username string) (*common.UserData,error) {
+	return db.FindUser(ctx, username)
 }
-
-func AddUser(ctx context.Context,user common.UserData, password string) (common.UserData,error){
+//AddUser add a user to the database and set its password. Returns the user created
+func AddUser(ctx context.Context,user common.UserData, password string) (*common.UserData,error){
 	if _,err:=db.FindUser(ctx, user.Username);	 err==nil{
-		return common.UserData{}, fmt.Errorf("Username already exists: %v",err)
+		return nil, fmt.Errorf("Username already exists: %v",err)
 	}
-	user, err:=db.AddUser(ctx, user); 
+	addedUser, err:=db.AddUser(ctx, user); 
 	if err!=nil{
-		return common.UserData{}, err
+		return nil, err
 	} 
-	if err:=user.SetPassword(ctx, password); err!=nil{
-		return common.UserData{}, err
+	if err:=addedUser.SetPassword(ctx, password); err!=nil{
+		return nil, err
 	}
-	user, err=db.UpdateUser(ctx, user)
+	userUpdated, err:=db.UpdateUser(ctx, user)
 	if err!=nil{
-		return common.UserData{}, err
+		return nil, err
 	}
-	return user, nil
+	return userUpdated, nil
 }
-
-func ChangePassword(ctx context.Context, user common.UserData, newPassword string)(common.UserData, error){
+//ChangePassword change the password to a user. Returns the user updated
+func ChangePassword(ctx context.Context, user common.UserData, newPassword string)(*common.UserData, error){
 if err:=user.SetPassword(ctx, newPassword); err!=nil{
-		return common.UserData{}, err
+		return nil, err
 	}
-	user, err:=db.UpdateUser(ctx, user)
-	if err!=nil{
-		return common.UserData{}, err
-	}
-	return user, nil
+	return db.UpdateUser(ctx, user)
 }
 
 func checkUserPassword(context context.Context, username string, password string) error{
@@ -97,18 +90,18 @@ func checkUserPassword(context context.Context, username string, password string
 	}
 	return u.CheckPassword(password)
 }
-
+//CheckToken check if a token string is ok for the authentication token or, if authorizationToken is true, for the authorization token
 func CheckToken (tokenString string, authorizationToken bool) (*jwt.Token, bool) {
-	 token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-     //Make sure that the token method conform to "SigningMethodHMAC"
-     if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-        return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		 }
-		 if authorizationToken{
-		 	return []byte(getAuthorizationSecret()), nil
-		 }else{
-			 return []byte(getAuthenticationSecret()), nil
-		 }
+	  token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		//Make sure that the token method conform to "SigningMethodHMAC"
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		if authorizationToken{
+		return []byte(getAuthorizationSecret()), nil
+		}
+		return []byte(getAuthenticationSecret()), nil
+		 
 	})
 	if err!=nil{
 		return nil, false

@@ -56,7 +56,7 @@ func login(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	authent, author, err:=model.TryAuthenticate(r.Context(),user, u.Password)
+	authent, author, err:=model.TryAuthenticate(r.Context(),*user, u.Password)
 	if err!=nil{
 		w.WriteHeader(http.StatusForbidden)
 		return
@@ -84,15 +84,14 @@ func createUser(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
-	var newUser common.UserData
+	var newUser *common.UserData
 	newUser.Username=u.Username
 
-	newUser, err=model.AddUser(r.Context(),newUser, u.Password)
+	newUser, err=model.AddUser(r.Context(),*newUser, u.Password)
 	if err!=nil{
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	
 	sendJSONResponse(w, newUser, http.StatusCreated)
 }
 

@@ -13,13 +13,13 @@ func (db *MemoryDB) FindUser(ctx context.Context,username  string) (*common.User
 	if !ok{
 		return nil, nil
 	}
-	return &u, nil
+	return u, nil
 }
 //GetAllUsers returns all users
 func (db *MemoryDB) GetAllUsers(ctx context.Context) ([]common.UserData, error){
 	var uData []common.UserData
 	for _,u:=range(db.users){
-		uData=append(uData, u)
+		uData=append(uData, *u)
 	}
 	return uData, nil
 } 
@@ -28,16 +28,16 @@ func (db *MemoryDB) GetAllUsersWithRole(ctx context.Context, roleName string) ([
 	var uData []common.UserData
 	for _,u:=range(db.users){
 		if u.Role==roleName{
-			uData=append(uData, u)
+			uData=append(uData, *u)
 		}
 	}
 	return uData, nil
 }
 //AddUser add a user to the db
-func (db *MemoryDB) AddUser(ctx context.Context,user common.UserData) (common.UserData,error){
+func (db *MemoryDB) AddUser(ctx context.Context,user common.UserData) (*common.UserData,error){
 	_, ok:=db.users[user.Username]
 	if ok{
-		return common.UserData{}, fmt.Errorf("Username already exists")
+		return nil, fmt.Errorf("Username already exists")
 	}
 	if user.AuthenticationTokens==nil{
 		user.AuthenticationTokens=make(map[string]string)
@@ -45,13 +45,13 @@ func (db *MemoryDB) AddUser(ctx context.Context,user common.UserData) (common.Us
 	if user.AuthorizationTokens==nil{
 		user.AuthorizationTokens=make(map[string]struct{})
 	}
-	db.users[user.Username]=user
+	db.users[user.Username]=&user
 	
 	return db.users[user.Username],nil
 }
 //UpdateUser update the user in the database. In memory does not throw an error
-func (db *MemoryDB) UpdateUser(ctx context.Context,user common.UserData) (common.UserData,error){
-	db.users[user.Username]=user
+func (db *MemoryDB) UpdateUser(ctx context.Context,user common.UserData) (*common.UserData,error){
+	db.users[user.Username]=&user
 	return db.users[user.Username], nil
 }
 //RemoveUser remove an actual user from database

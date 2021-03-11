@@ -13,26 +13,26 @@ func (db *MemoryDB) FindRole(ctx context.Context,roleName  string) (*common.Secu
 	if !ok{
 		return nil, nil
 	}
-	return &role, nil
+	return role, nil
 }
 
 //AddRole add a new empty role to the database
-func (db *MemoryDB) AddRole(ctx context.Context,role common.SecurityRole) (common.SecurityRole,error){
+func (db *MemoryDB) AddRole(ctx context.Context,role common.SecurityRole) (*common.SecurityRole,error){
 	_, ok:=db.roles[role.Name]
 	if ok{
-		return common.SecurityRole{}, fmt.Errorf("Role already exists")
+		return nil, fmt.Errorf("Role already exists")
 	}
 	if role.Privileges ==nil{
 		role.Privileges=make([]common.SecurityPrivilege, 0)
 	}
 	
-	db.roles[role.Name]=role
+	db.roles[role.Name]=&role
 	
 	return db.roles[role.Name],nil
 }
 //UpdateRole updates an actual role
-func (db *MemoryDB) UpdateRole(ctx context.Context,role common.SecurityRole) (common.SecurityRole,error){
-	db.roles[role.Name]=role
+func (db *MemoryDB) UpdateRole(ctx context.Context,role common.SecurityRole) (*common.SecurityRole,error){
+	db.roles[role.Name]=&role
 	return db.roles[role.Name], nil
 }
 //RemoveRole remove a role from the database
@@ -44,7 +44,7 @@ func (db *MemoryDB) RemoveRole(ctx context.Context,role common.SecurityRole) err
 func (db *MemoryDB) GetAllRoles(ctx context.Context) ([]common.SecurityRole, error){
 	var roles []common.SecurityRole
 	for _,role:=range(db.roles){
-		roles=append(roles, role)
+		roles=append(roles, *role)
 	}
 	return roles, nil
 }
