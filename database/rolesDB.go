@@ -8,9 +8,9 @@ import (
 
 //SecurityRoleDBInterface is the interface a db should implement for the functionality of a database
 type SecurityRoleDBInterface interface{
-	AddRole(ctx context.Context,role common.SecurityRole) (*common.SecurityRole,error)
-	UpdateRole(ctx context.Context,role common.SecurityRole) (*common.SecurityRole,error)
-	RemoveRole(ctx context.Context,role common.SecurityRole) error
-	FindRole(ctx context.Context,roleName  string) (*common.SecurityRole, error)
-	GetAllRoles(ctx context.Context) ([]common.SecurityRole, error)
+	AddRole( context.Context, common.SecurityRole) (*common.SecurityRole,error)
+	UpdateRole( context.Context, common.SecurityRole) (*common.SecurityRole,error)
+	RemoveRole( context.Context, string) error
+	FindRole( context.Context,  string) (*common.SecurityRole, error)
+	GetAllRoles( context.Context) ([]common.SecurityRole, error)
 }

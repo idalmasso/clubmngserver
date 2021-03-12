@@ -2,7 +2,6 @@ package memdb
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/idalmasso/clubmngserver/common"
 )
@@ -37,7 +36,7 @@ func (db *MemoryDB) GetAllUsersWithRole(ctx context.Context, roleName string) ([
 func (db *MemoryDB) AddUser(ctx context.Context,user common.UserData) (*common.UserData,error){
 	_, ok:=db.users[user.Username]
 	if ok{
-		return nil, fmt.Errorf("Username already exists")
+		return nil,  common.AlreadyExistsError{ID:user.Username}
 	}
 	if user.AuthenticationTokens==nil{
 		user.AuthenticationTokens=make(map[string]string)

@@ -14,7 +14,7 @@ func AddRole(ctx context.Context, roleName string, privileges ...common.Security
 		return nil,err
 	}
 	if role!=nil{
-		return role, fmt.Errorf("User already exists")
+		return role,  common.AlreadyExistsError{ID:roleName}
 	}
 	newRole:= common.SecurityRole{Name: roleName , Privileges: privileges}
 	theNewRole, err := db.AddRole(ctx, newRole); 
@@ -30,7 +30,7 @@ func DeleteRole(ctx context.Context, roleName string) error {
 		return err
 	}
 	if role==nil{
-		return fmt.Errorf("Role does not exists")
+		return common.NotFoundError{ID:roleName}
 	}
 	users, err:= db.GetAllUsersWithRole(ctx, roleName)
 	if err!=nil{
@@ -39,7 +39,7 @@ func DeleteRole(ctx context.Context, roleName string) error {
 	if len(users)>0{
 		return fmt.Errorf("Users have the role %v cannot delete", roleName)
 	}
-	return db.RemoveRole(ctx, *role)
+	return db.RemoveRole(ctx, roleName)
 }
 
 //UpdateRole updates the privileges inside the role with name roleName
@@ -49,7 +49,7 @@ func UpdateRole(ctx context.Context, roleName string, privileges ...common.Secur
 		return err
 	}
 	if role==nil{
-		return fmt.Errorf("Role does not exists")
+		return common.NotFoundError{ID:roleName}
 	}
 	role.Privileges = privileges
 	_, err=db.UpdateRole(ctx, *role)
@@ -59,6 +59,9 @@ func UpdateRole(ctx context.Context, roleName string, privileges ...common.Secur
 //GetRole returns the role called roleName
 func GetRole(ctx context.Context, roleName string) (*common.SecurityRole, error){
 	role, err:=db.FindRole(ctx, roleName)
+	if role==nil{
+		return nil, common.NotFoundError{ID: roleName}
+	}
 	return role, err
 }
 //GetAllRoles returns the list of all securityRoles
@@ -80,6 +83,9 @@ func IsRoleAuthorized(ctx context.Context, roleName string, privilege common.Sec
 	if err!=nil{
 		return false, err
 	}
+	if role==nil{
+		return false, common.NotFoundError{ID: roleName}
+	}
 	if role.HasPrivilege(privilege) || role.HasPrivilege(common.SecurityAdmin) {
 		return true, nil
 	}
@@ -90,6 +96,9 @@ func GetUserRole(ctx context.Context, user common.UserData) (*common.SecurityRol
 	role, err:=db.FindRole(ctx, user.Role)
 	if err!=nil{
 		return nil, err
+	}
+	if role==nil{
+		return nil, common.NotFoundError{ID: user.Role}
 	}
 	return role, nil
 }

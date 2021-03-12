@@ -5,17 +5,24 @@ import (
 	"fmt"
 )
 
-//UserProperty is an interface that can contain any input field for a user, and its type.
-type UserProperty interface{
-	json.Marshaler
+//UserPropertyDefinition is an interface that can contain any input field for a user, and its type.
+type UserPropertyDefinition interface{
+	
 	GetName()string
 	SetName(string)
-	GetValueString()string
-	SetValueString(string) error
 	GetTypeString()UserPropertyType
+	SetMandatory(bool)
 	//IsMandatory should be used ONLY on frontend
 	IsMandatory()bool
 }
+//UserPropertyValue is the interface of the value of a userproperty
+type UserPropertyValue interface {
+	json.Marshaler
+	UserPropertyDefinition
+	GetValueString()string
+	SetValueString(string) error
+}
+
 //AdmittedUserPropertyTypes is a list of the admitted types in string
 var AdmittedUserPropertyTypes =[]UserPropertyType{UserTypeInt64, UserTypeString, UserTypeFloat64,UserTypeBool}
 //UserPropertyType is the type mapped to string for UserProperty enabled
@@ -30,8 +37,8 @@ const (
 	//UserTypeBool is the string rapresentation for the type of a userproperty of type bool
 	UserTypeBool UserPropertyType="bool"
 )
-//NewUserProperty returns a UserProperty of the requested type, or error
-func NewUserProperty(userPropertyType UserPropertyType) (UserProperty,error){
+//NewUserPropertyDefinition returns a UserProperty of the requested type, or error
+func NewUserPropertyDefinition(userPropertyType UserPropertyType) (UserPropertyDefinition,error){
 	switch userPropertyType{
 	case UserTypeBool:
 		return new(BoolUserProperty), nil
@@ -41,6 +48,21 @@ func NewUserProperty(userPropertyType UserPropertyType) (UserProperty,error){
 		return new(FloatUserProperty), nil
 	case UserTypeString:
 		return new(StringUserProperty), nil
+	}
+	return nil,fmt.Errorf("Type not admitted")
+}
+
+//NewUserPropertyValue returns a UserPropertyvalue of the requested type, or error
+func NewUserPropertyValue(userPropertyType UserPropertyType) (UserPropertyValue,error){
+	switch userPropertyType{
+	case UserTypeBool:
+		return new(BoolUserPropertyValue), nil
+	case UserTypeInt64:
+		return new(IntUserPropertyValue), nil
+	case UserTypeFloat64:
+		return new(FloatUserPropertyValue), nil
+	case UserTypeString:
+		return new(StringUserPropertyValue), nil
 	}
 	return nil,fmt.Errorf("Type not admitted")
 }

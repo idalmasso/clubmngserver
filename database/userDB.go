@@ -12,7 +12,7 @@ type UserAuthDBInterface interface{
 	AddUser(context.Context,common.UserData) (*common.UserData,error)
 	UpdateUser(context.Context,common.UserData) (*common.UserData,error)
 	RemoveUser(context.Context,common.UserData) error
-	GetAllUsers(ctx context.Context) ([]common.UserData, error)
-	GetAllUsersWithRole(ctx context.Context, roleName string)([]common.UserData, error)	
+	GetAllUsers( context.Context) ([]common.UserData, error)
+	GetAllUsersWithRole( context.Context,  string)([]common.UserData, error)	
 }
 

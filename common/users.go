@@ -14,7 +14,7 @@ type UserData struct {
 	AuthenticationTokens map[string] string
 	AuthorizationTokens map[string] struct{}
 	Role string
-	properties map[string]userprops.UserProperty
+	properties map[string]userprops.UserPropertyValue
 }
 //SetPassword sets the password to the user 
 func (user *UserData) SetPassword(ctx context.Context, password string) error {

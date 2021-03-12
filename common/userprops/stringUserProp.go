@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 )
 
-//StringUserProperty is a userProperty containing a string value
+//StringUserProperty is a userProperty definition
 type StringUserProperty struct{
 	Name string `json:"name"`
-	Value string `json:"value"`
 	Mandatory bool `json:"mandatory"`
 }
 //MarshalJSON needed for json-marshalling
@@ -22,21 +21,15 @@ func(property *StringUserProperty)	GetName()string{
 func(property *StringUserProperty)	SetName(value string){
 	property.Name=value
 }
-//GetValueString get the value formatted as string
-func(property *StringUserProperty)	GetValueString()string{
-	return property.Value
-}
-//SetValueString set the value by a string
-func(property *StringUserProperty)	SetValueString(value string) error{
-	property.Value=value
-	return nil
-}
 
 //GetTypeString returns the type in a string formatted fashion
 func(property *StringUserProperty)	GetTypeString()UserPropertyType{
 	return UserTypeString
 }
-
+//SetMandatory sets the fact of a value being mandatory
+func(property *StringUserProperty) SetMandatory(mandatory bool){
+	property.Mandatory=mandatory
+}
 //IsMandatory should be used ONLY on frontend to decide if a field should be mandatory. no logic on backend here, because if added after would be hard
 func(property *StringUserProperty)	IsMandatory()bool {
 	return property.Mandatory

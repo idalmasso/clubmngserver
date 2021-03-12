@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -37,7 +38,7 @@ func addAuthRouterEndpoints(r *mux.Router) {
 	}).Subrouter()
 	
 	authRouter.HandleFunc("/login", login).Methods("POST")
-	authRouter.HandleFunc("/create-user", createUser).Methods("POST")
+	authRouter.HandleFunc("/signin", createUser).Methods("POST")
 	reqRouter.Use(checkTokenAuthenticationHandler)
 	reqRouter.HandleFunc("/logout", logout).Methods("POST")
 	reqRouter.HandleFunc("/token", getTokenByToken).Methods("GET")
@@ -53,12 +54,18 @@ func login(w http.ResponseWriter, r *http.Request){
 	}
 	user,err:=model.FindUser(r.Context(), u.Username)
 	if err!=nil{
-		w.WriteHeader(http.StatusNotFound)
+		var notFoundError common.NotFoundError
+		if errors.As(err, &notFoundError){
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFoundError.Error()))
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	authent, author, err:=model.TryAuthenticate(r.Context(),*user, u.Password)
 	if err!=nil{
-		w.WriteHeader(http.StatusForbidden)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	t:=TokensResponse{AuthenticationToken: authent, AuthorizationToken: author }
@@ -70,6 +77,7 @@ func logout(w http.ResponseWriter, r *http.Request){
 	var authenticationToken string
 	authenticationToken = context.Get(r, "authenticationtoken").(string)
 	model.RemoveUserAuthentication(u,authenticationToken)
+	w.WriteHeader(http.StatusOK)
 }
 
 func createUser(w http.ResponseWriter, r *http.Request){
@@ -79,16 +87,17 @@ func createUser(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	_,err=model.FindUser(r.Context(), u.Username)
-	if err==nil{
-		w.WriteHeader(http.StatusConflict)
-		return
-	}
 	var newUser *common.UserData
 	newUser.Username=u.Username
 
 	newUser, err=model.AddUser(r.Context(),*newUser, u.Password)
 	if err!=nil{
+		var alreadyExists common.AlreadyExistsError
+		if errors.As(err, &alreadyExists){
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(alreadyExists.Error()))
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

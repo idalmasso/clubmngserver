@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -67,7 +68,13 @@ func checkTokenAuthenticationHandler(next http.Handler) http.Handler{
 			//check if username actually exists
 			user,err:= model.FindUser(r.Context(), username);
 			if err!=nil{
-				http.Error(w, "Unauthorized, user not exists", http.StatusUnauthorized)
+				var notFoundError common.NotFoundError
+				if errors.As(err, &notFoundError){
+					w.WriteHeader(http.StatusNotFound)
+					w.Write([]byte(notFoundError.Error()))
+					return
+				}
+				http.Error(w, "Unauthorized, error occurred"+err.Error(), http.StatusUnauthorized)
 			}
 			//Set the username in the request, so I will use it in check after!
 			context.Set(r, "user", user)
@@ -107,7 +114,13 @@ func checkTokenAuthorizationHandler(next http.HandlerFunc) http.HandlerFunc{
 			//check if username actually exists
 			user,err:= model.FindUser(r.Context(), username); 
 			if err!=nil{
-				http.Error(w, "Unauthorized, user not exists", http.StatusUnauthorized)
+				var notFoundError common.NotFoundError
+				if errors.As(err, &notFoundError){
+					w.WriteHeader(http.StatusNotFound)
+					w.Write([]byte(notFoundError.Error()))
+					return
+				}
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			}
 			//Set the username in the request, so I will use it in check after!
 			context.Set(r, "user", user)
@@ -137,6 +150,9 @@ func checkUserHasPrivilegeMiddleware(privileges ...common.SecurityPrivilege) fun
 			for _,privilege:=range(privileges){
 				if authorized, err:=model.IsRoleAuthorized(r.Context(), userCtx.Role, privilege ); err!=nil || !authorized{
 					w.WriteHeader(http.StatusUnauthorized)
+					if err!=nil{
+						w.Write([]byte(err.Error()))
+					}
 					return
 				}
 			}

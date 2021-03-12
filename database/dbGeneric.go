@@ -4,6 +4,7 @@ package database
 type ClubDb interface{
 	SecurityRoleDBInterface
 	UserAuthDBInterface
+	UserPropsDB
 	Init()
 	
 }

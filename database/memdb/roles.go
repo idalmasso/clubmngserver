@@ -2,7 +2,6 @@ package memdb
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/idalmasso/clubmngserver/common"
 )
@@ -20,7 +19,7 @@ func (db *MemoryDB) FindRole(ctx context.Context,roleName  string) (*common.Secu
 func (db *MemoryDB) AddRole(ctx context.Context,role common.SecurityRole) (*common.SecurityRole,error){
 	_, ok:=db.roles[role.Name]
 	if ok{
-		return nil, fmt.Errorf("Role already exists")
+		return nil, common.AlreadyExistsError{ID:role.Name}
 	}
 	if role.Privileges ==nil{
 		role.Privileges=make([]common.SecurityPrivilege, 0)
@@ -32,12 +31,15 @@ func (db *MemoryDB) AddRole(ctx context.Context,role common.SecurityRole) (*comm
 }
 //UpdateRole updates an actual role
 func (db *MemoryDB) UpdateRole(ctx context.Context,role common.SecurityRole) (*common.SecurityRole,error){
+	if _, ok:=db.roles[role.Name]; !ok{
+		return nil, common.NotFoundError{ID:role.Name}
+	}
 	db.roles[role.Name]=&role
 	return db.roles[role.Name], nil
 }
 //RemoveRole remove a role from the database
-func (db *MemoryDB) RemoveRole(ctx context.Context,role common.SecurityRole) error{
-	delete(db.roles, role.Name)
+func (db *MemoryDB) RemoveRole(ctx context.Context,roleName string) error{
+	delete(db.roles, roleName)
 	return nil
 }
 //GetAllRoles returns all roles in the db

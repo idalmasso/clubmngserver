@@ -40,7 +40,10 @@ func(property *FloatUserProperty)	SetValueString(value string) error{
 func(property *FloatUserProperty)	GetTypeString()UserPropertyType{
 	return UserTypeFloat64
 }
-
+//SetMandatory sets the fact of a value being mandatory
+func(property *FloatUserProperty) SetMandatory(mandatory bool){
+	property.Mandatory=mandatory
+}
 //IsMandatory should be used ONLY on frontend to decide if a field should be mandatory. no logic on backend here, because if added after would be hard
 func(property *FloatUserProperty)	IsMandatory()bool {
 	return property.Mandatory

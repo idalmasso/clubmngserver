@@ -55,12 +55,19 @@ func  RemoveUserAuthentication(user common.UserData,authenticationToken string) 
 }
 //FindUser finds an actual user
 func FindUser(ctx context.Context, username string) (*common.UserData,error) {
-	return db.FindUser(ctx, username)
+	u, err:=db.FindUser(ctx, username)
+	if err!=nil{
+		return nil, err
+	}
+	if u==nil{
+		return nil, common.NotFoundError{ID: username}
+	}
+	return u, nil
 }
 //AddUser add a user to the database and set its password. Returns the user created
 func AddUser(ctx context.Context,user common.UserData, password string) (*common.UserData,error){
 	if _,err:=db.FindUser(ctx, user.Username);	 err==nil{
-		return nil, fmt.Errorf("Username already exists: %v",err)
+		return nil,  common.AlreadyExistsError{ID:user.Username}
 	}
 	addedUser, err:=db.AddUser(ctx, user); 
 	if err!=nil{
@@ -86,7 +93,7 @@ if err:=user.SetPassword(ctx, newPassword); err!=nil{
 func checkUserPassword(context context.Context, username string, password string) error{
 	u,err:=FindUser(context,username)
 	if err!=nil{
-		return fmt.Errorf("Not found")
+		return common.NotFoundError{ID: username}
 	}
 	return u.CheckPassword(password)
 }

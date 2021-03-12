@@ -35,7 +35,10 @@ func(property *BoolUserProperty)	SetValueString(value string) error{
 	}
 	return err
 }
-
+//SetMandatory sets the fact of a value being mandatory
+func(property *BoolUserProperty) SetMandatory(mandatory bool){
+	property.Mandatory=mandatory
+}
 //GetTypeString returns the type in a string formatted fashion
 func(property *BoolUserProperty)	GetTypeString()UserPropertyType{
 	return UserTypeBool

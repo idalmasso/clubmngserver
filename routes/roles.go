@@ -2,8 +2,8 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/idalmasso/clubmngserver/common"
@@ -84,12 +84,14 @@ func viewRole(w http.ResponseWriter, r *http.Request){
 	}
 	role, err:=model.GetRole(r.Context(), roleRequest.Name)
 	if err!=nil {
+		var notFoundError common.NotFoundError
+		if errors.As(err, &notFoundError){
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFoundError.Error()))
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
-		return
-	}
-	if role==nil{
-		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	roleRequest.initFromDBRole(*role)
@@ -105,16 +107,16 @@ func addRole(w http.ResponseWriter, r *http.Request){
 	newRole := roleRequest.toDBRole()
 	addedUser, err:=model.AddRole(r.Context(), newRole.Name, newRole.Privileges...)
 	if err!=nil{
-		if strings.Contains(err.Error(), "already exists"){
-			roleRequest.initFromDBRole(*addedUser)
-			sendJSONResponse(w,roleRequest, http.StatusSeeOther)
+		var alreadyExists common.AlreadyExistsError
+		if errors.As(err, &alreadyExists){
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(alreadyExists.Error()))
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
-
 	roleRequest.initFromDBRole(*addedUser)
 	sendJSONResponse(w, roleRequest, http.StatusOK)
 }
@@ -134,8 +136,10 @@ func updateRole(w http.ResponseWriter, r *http.Request){
 	newRole:=roleRequest.toDBRole()
 	err:=model.UpdateRole(r.Context(), newRole.Name, newRole.Privileges...)
 	if err!=nil{
-		if strings.Contains(err.Error(),  "does not exists"){
+		var notFoundError common.NotFoundError
+		if errors.As(err, &notFoundError){
 			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFoundError.Error()))
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -161,8 +165,10 @@ func removeRole(w http.ResponseWriter, r *http.Request){
 	}
 	err:=model.DeleteRole(r.Context(), roleRequest.Name)
 	if err!=nil{
-		if strings.Contains(err.Error(),  "does not exists"){
+		var notFoundError common.NotFoundError
+		if errors.As(err, &notFoundError){
 			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFoundError.Error()))
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
