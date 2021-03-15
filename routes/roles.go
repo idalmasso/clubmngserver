@@ -43,9 +43,9 @@ func addRolesRouterEndpoints(r *mux.Router) {
 	reqRouter.Use(checkTokenAuthenticationHandler)
 	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(allRoles)).Methods("GET")
 	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(viewRole)).Methods("GET")
-	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityRolesUpdate)(addRole)).Methods("POST")
+	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityRolesAdd)(addRole)).Methods("POST")
 	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(common.SecurityRolesUpdate)(updateRole)).Methods("PUT")
-	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(common.SecurityRolesUpdate)(removeRole)).Methods("DELETE")
+	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(common.SecurityRolesDelete)(removeRole)).Methods("DELETE")
 	privRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(listPrivileges)).Methods("GET")
 }
 
@@ -70,19 +70,13 @@ func allRoles(w http.ResponseWriter, r *http.Request){
 	sendJSONResponse(w, rolesReturn, http.StatusOK)
 }
 func viewRole(w http.ResponseWriter, r *http.Request){
-	var roleRequest RoleStructValue
-	if err:=json.NewDecoder(r.Body).Decode(&roleRequest); err!=nil{
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
-	}
 	params:=mux.Vars(r)
 	roleName, ok:=params["roleName"]
-	if !ok || roleName!=roleRequest.Name{
+	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	role, err:=model.GetRole(r.Context(), roleRequest.Name)
+	role, err:=model.GetRole(r.Context(),roleName)
 	if err!=nil {
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){
@@ -94,6 +88,7 @@ func viewRole(w http.ResponseWriter, r *http.Request){
 		w.Write([]byte(err.Error()))
 		return
 	}
+	var roleRequest RoleStructValue
 	roleRequest.initFromDBRole(*role)
 	sendJSONResponse(w, roleRequest, http.StatusOK)
 }
@@ -151,19 +146,14 @@ func updateRole(w http.ResponseWriter, r *http.Request){
 	sendJSONResponse(w, roleRequest, http.StatusOK)
 }
 func removeRole(w http.ResponseWriter, r *http.Request){
-	var roleRequest RoleStructValue
-	if err:=json.NewDecoder(r.Body).Decode(&roleRequest); err!=nil{
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	
 	params:=mux.Vars(r)
 	roleName, ok:=params["roleName"]
-	if !ok || roleName!=roleRequest.Name{
+	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err:=model.DeleteRole(r.Context(), roleRequest.Name)
+	err:=model.DeleteRole(r.Context(), roleName)
 	if err!=nil{
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){

@@ -40,19 +40,19 @@ func DeleteUserProperty(ctx context.Context, userPropertyName string) error {
 }
 
 //UpdateUserProperty updates userProperty definitions
-func UpdateUserProperty(ctx context.Context, userPropertyDefinitionName string, isMandatory bool ) error {
+func UpdateUserProperty(ctx context.Context, userPropertyDefinitionName string, isMandatory bool ) (userprops.UserPropertyDefinition, error) {
 	prop, err:=db.FindUserPropertyDefinition(ctx, userPropertyDefinitionName)
 	if err!=nil{
-		return err
+		return nil,err
 	}
 	if prop==nil{
-		return common.NotFoundError{ID:userPropertyDefinitionName}
+		return nil,common.NotFoundError{ID:userPropertyDefinitionName}
 	}
 	prop.SetMandatory(isMandatory)
 	
 	_, err=db.UpdateUserPropertyDefinition(ctx, prop)
 	
-	return err
+	return prop,err
 }
 //GetUserPropertiesList return a list of all propert definitions
 func GetUserPropertiesList(ctx context.Context) ([]userprops.UserPropertyDefinition, error){

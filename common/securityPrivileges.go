@@ -18,6 +18,7 @@ var securityPrivilegesStringMap  = map[SecurityPrivilege]string{
 	SecurityRolesView:"SecurityRolesView",
 	SecurityRolesUpdate:"SecurityRolesUpdate",
 	SecurityRolesDelete:"SecurityRolesDelete",
+	SecurityRolesAdd: "SecurityRolesAdd",
 	SecurityRolesToUserMaintain:"SecurityRolesToUserMaintain",
 	SecuritySelfPaymentsView:"SecuritySelfPaymentsView",
 	SecurityLinkedUsersPaymentsView:"SecurityLinkedUsersPaymentsView",
@@ -26,6 +27,10 @@ var securityPrivilegesStringMap  = map[SecurityPrivilege]string{
 	SecurityRemoveUserEntrances:"SecurityRemoveUserEntrances",
 	SecurityUpdateParameters:"SecurityUpdateParameters",
 	SecurityViewParameters:"SecurityViewParameters",
+	SecurityUserPropertyDefinitionView:"SecurityUserPropertyDefinitionView",
+	SecurityUserPropertyDefinitionUpdate:"SecurityUserPropertyDefinitionUpdate",
+	SecurityUserPropertyDefinitionRemove:"SecurityUserPropertyDefinitionRemove",
+	SecurityUserPropertyDefinitionAdd:"SecurityUserPropertyDefinitionAdd",
 }
 const  (
 	//SecurityAdmin is all ok for any function
@@ -54,6 +59,8 @@ const  (
 	SecurityRolesUpdate
 	//SecurityRolesDelete can delete a security role, only if no user has it
 	SecurityRolesDelete
+	//SecurityRolesAdd can add a new security role
+	SecurityRolesAdd
 	//SecurityRolesToUserMaintain can add and remove roles to a user
 	SecurityRolesToUserMaintain
 	//SecuritySelfPaymentsView can view own payment history
@@ -70,6 +77,14 @@ const  (
 	SecurityUpdateParameters
 	//SecurityViewParameters Can view the parameters
 	SecurityViewParameters
+	//SecurityUserPropertyDefinitionAdd user can add a user property definition
+	SecurityUserPropertyDefinitionAdd
+	//SecurityUserPropertyDefinitionUpdate user can edit a user property definition
+	SecurityUserPropertyDefinitionUpdate
+	//SecurityUserPropertyDefinitionRemove user can remove a user property definition
+	SecurityUserPropertyDefinitionRemove
+	//SecurityUserPropertyDefinitionView user can view a user property definition
+	SecurityUserPropertyDefinitionView
 )
 
 
