@@ -9,6 +9,7 @@ import (
 type FloatUserPropertyValue struct{
 	FloatUserProperty
 	Value float64 `json:"value"`
+	
 }
 //MarshalJSON needed for json-marshalling
 func(property *FloatUserPropertyValue)	MarshalJSON()([]byte, error){

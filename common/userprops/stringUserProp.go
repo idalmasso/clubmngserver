@@ -8,6 +8,7 @@ import (
 type StringUserProperty struct{
 	Name string `json:"name"`
 	Mandatory bool `json:"mandatory"`
+	System bool `json:"system"`
 }
 //MarshalJSON needed for json-marshalling
 func(property *StringUserProperty)	MarshalJSON()([]byte, error){
@@ -33,4 +34,13 @@ func(property *StringUserProperty) SetMandatory(mandatory bool){
 //IsMandatory should be used ONLY on frontend to decide if a field should be mandatory. no logic on backend here, because if added after would be hard
 func(property *StringUserProperty)	IsMandatory()bool {
 	return property.Mandatory
+}
+
+//SetIsSystem set value if a prop is a system property (that should not be deleted or updated)
+func (property *StringUserProperty)	SetIsSystem(isSystem bool) {
+	property.System=isSystem
+}
+//IsSystem will returns if a prop is a system property
+func(property *StringUserProperty)	IsSystem()bool{
+	return property.System
 }

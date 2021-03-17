@@ -129,7 +129,7 @@ func updateRole(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	newRole:=roleRequest.toDBRole()
-	err:=model.UpdateRole(r.Context(), newRole.Name, newRole.Privileges...)
+	_,err:=model.UpdateRole(r.Context(), newRole.Name, newRole.Privileges...)
 	if err!=nil{
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){

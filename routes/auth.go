@@ -76,7 +76,15 @@ func logout(w http.ResponseWriter, r *http.Request){
 	u :=context.Get(r, "user").(common.UserData)
 	var authenticationToken string
 	authenticationToken = context.Get(r, "authenticationtoken").(string)
-	model.RemoveUserAuthentication(u,authenticationToken)
+	err:=model.RemoveUserAuthentication(r.Context(), u.Username,authenticationToken)
+	if err!=nil{
+		if errors.As(err,&common.NotFoundError{}){
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
 

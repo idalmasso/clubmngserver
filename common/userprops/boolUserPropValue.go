@@ -9,6 +9,7 @@ import (
 type BoolUserPropertyValue struct{
 	BoolUserProperty
 	Value bool `json:"value"`
+
 }
 //MarshalJSON needed for json-marshalling
 func(property *BoolUserPropertyValue)	MarshalJSON()([]byte, error){

@@ -14,6 +14,10 @@ type UserPropertyDefinition interface{
 	SetMandatory(bool)
 	//IsMandatory should be used ONLY on frontend
 	IsMandatory()bool
+	//SetIsSystem set value if a prop is a system property (that should not be deleted or updated)
+	SetIsSystem(bool)
+	//IsSystem will returns if a prop is a system property
+	IsSystem()bool
 }
 //UserPropertyValue is the interface of the value of a userproperty
 type UserPropertyValue interface {

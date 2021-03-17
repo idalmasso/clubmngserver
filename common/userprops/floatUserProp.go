@@ -10,6 +10,7 @@ type FloatUserProperty struct{
 	Name string `json:"name"`
 	Value float64 `json:"value"`
 	Mandatory bool `json:"mandatory"`
+	System bool `json:"system"`
 }
 //MarshalJSON needed for json-marshalling
 func(property *FloatUserProperty)	MarshalJSON()([]byte, error){
@@ -47,4 +48,12 @@ func(property *FloatUserProperty) SetMandatory(mandatory bool){
 //IsMandatory should be used ONLY on frontend to decide if a field should be mandatory. no logic on backend here, because if added after would be hard
 func(property *FloatUserProperty)	IsMandatory()bool {
 	return property.Mandatory
+}
+//SetIsSystem set value if a prop is a system property (that should not be deleted or updated)
+func (property *FloatUserProperty)	SetIsSystem(isSystem bool) {
+	property.System=isSystem
+}
+//IsSystem will returns if a prop is a system property
+func(property *FloatUserProperty)	IsSystem()bool{
+	return property.System
 }

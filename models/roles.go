@@ -43,19 +43,22 @@ func DeleteRole(ctx context.Context, roleName string) error {
 }
 
 //UpdateRole updates the privileges inside the role with name roleName
-func UpdateRole(ctx context.Context, roleName string, privileges ...common.SecurityPrivilege) error {
+func UpdateRole(ctx context.Context, roleName string, privileges ...common.SecurityPrivilege) (*common.SecurityRole,error) {
 	role, err:=db.FindRole(ctx, roleName)
 	if err!=nil{
-		return err
+		return nil,err
 	}
 	if role==nil{
-		return common.NotFoundError{ID:roleName}
+		return nil,common.NotFoundError{ID:roleName}
 	}
 	role.Privileges = privileges
-	_, err=db.UpdateRole(ctx, *role)
-	
-	return err
+	role, err=db.UpdateRole(ctx, *role)
+	if err!=nil{
+		return nil, err
+	}
+	return role, err
 }
+
 //GetRole returns the role called roleName
 func GetRole(ctx context.Context, roleName string) (*common.SecurityRole, error){
 	role, err:=db.FindRole(ctx, roleName)
@@ -69,13 +72,27 @@ func GetAllRoles(ctx context.Context) ([]common.SecurityRole, error){
 	return db.GetAllRoles(ctx)
 }
 //AddRoleToUser adds the role with name roleName to the user
-func AddRoleToUser(ctx context.Context, user common.UserData ,roleName string) (*common.UserData,error){
+func AddRoleToUser(ctx context.Context, username string ,roleName string) (*common.UserData,error){
 	role, err:=db.FindRole(ctx, roleName)
 	if err!=nil{
 		return nil,err
 	}
+	if role==nil{
+		return nil,common.NotFoundError{ID: roleName}
+	}
+	user, err:=db.FindUser(ctx, username)
+	if err!=nil{
+		return nil, err
+	}
+	if user==nil{
+		return nil,common.NotFoundError{ID:username}
+	}
 	user.AddRole(ctx, *role)
-	return db.UpdateUser(ctx, user); 
+	updpatedUser, err:= db.UpdateUser(ctx, *user);
+	if err!=nil{
+		return nil, err
+	} 
+	return updpatedUser, nil
 }
 //IsRoleAuthorized returns true if a role with roleName is enabled for a privilege
 func IsRoleAuthorized(ctx context.Context, roleName string, privilege common.SecurityPrivilege) (bool,error){

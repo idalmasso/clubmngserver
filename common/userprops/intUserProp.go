@@ -6,6 +6,7 @@ import "encoding/json"
 type IntUserProperty struct{
 	Name string `json:"name"`
 	Mandatory bool `json:"mandatory"`
+	System bool `json:"system"`
 }
 //MarshalJSON needed for json-marshalling
 func(property *IntUserProperty)	MarshalJSON()([]byte, error){
@@ -32,3 +33,11 @@ func(property *IntUserProperty)	IsMandatory()bool {
 	return property.Mandatory
 }
 
+//SetIsSystem set value if a prop is a system property (that should not be deleted or updated)
+func (property *IntUserProperty)	SetIsSystem(isSystem bool) {
+	property.System=isSystem
+}
+//IsSystem will returns if a prop is a system property
+func(property *IntUserProperty)	IsSystem()bool{
+	return property.System
+}

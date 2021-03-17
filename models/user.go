@@ -15,44 +15,7 @@ func GetUsersList(ctx context.Context) ([]common.UserData, error){
 	users, err:=db.GetAllUsers(ctx)
 	return users,err
 }
-//GetAuthenticatonAuthorizationToken returns new authentication and authorization tokens for user with name username
-func  GetAuthenticatonAuthorizationToken(username string) (string,string, error){
-	return getAuthenticationAuthorizationTokens(username)
-}
-//TryAuthenticate tries to authenticate the user with a password passed. If ok, it sets and returns also the two tokens
-func  TryAuthenticate(context context.Context, user common.UserData,  password string) (string,string,  error){
-	if err:=checkUserPassword(context,user.Username, password); err!=nil{
-		return "","", err
-	}
-	authentication, authorization, err:= getAuthenticationAuthorizationTokens(user.Username)
-	if err!=nil{
-		return "","", err
-	}
-	var val struct {}
-	user.AuthenticationTokens[authentication]=authorization
-	user.AuthorizationTokens[authorization] = val
-	db.UpdateUser(context, user)
-	return authentication, authorization, nil
-}
-//GetUserTokenForAuthenticationToken get a new Authorizationtoken and set it in the user for an existing authorization token
-func GetUserTokenForAuthenticationToken(context context.Context, authenticationToken string, user common.UserData ) (string, error){
-	authorization, err:= getAuthorizationToken(user.Username)
-	if err!= nil{
-		return "", err
-	}
-	var val struct{}
-	user.AuthenticationTokens[authenticationToken] = authorization
-	user.AuthorizationTokens[authorization] = val
-	db.UpdateUser(context, user)
-	return authorization, nil
-}
-//RemoveUserAuthentication removes a token from a user/invalidate an authentication user token so it cannot be used anymore
-func  RemoveUserAuthentication(user common.UserData,authenticationToken string) {
-	if author, ok:=user.AuthenticationTokens[authenticationToken]; ok{
-		delete(user.AuthorizationTokens, author)
-	}
-	delete(user.AuthenticationTokens, authenticationToken)
-}
+
 //FindUser finds an actual user
 func FindUser(ctx context.Context, username string) (*common.UserData,error) {
 	u, err:=db.FindUser(ctx, username)
@@ -66,7 +29,7 @@ func FindUser(ctx context.Context, username string) (*common.UserData,error) {
 }
 //AddUser add a user to the database and set its password. Returns the user created
 func AddUser(ctx context.Context,user common.UserData, password string) (*common.UserData,error){
-	if _,err:=db.FindUser(ctx, user.Username);	 err==nil{
+	if userOld,err:=db.FindUser(ctx, user.Username);	 err==nil && userOld!=nil{
 		return nil,  common.AlreadyExistsError{ID:user.Username}
 	}
 	addedUser, err:=db.AddUser(ctx, user); 
@@ -76,7 +39,7 @@ func AddUser(ctx context.Context,user common.UserData, password string) (*common
 	if err:=addedUser.SetPassword(ctx, password); err!=nil{
 		return nil, err
 	}
-	userUpdated, err:=db.UpdateUser(ctx, user)
+	userUpdated, err:=db.UpdateUser(ctx, *addedUser)
 	if err!=nil{
 		return nil, err
 	}
@@ -175,3 +138,50 @@ func getAuthenticationSecret() string{
 	return secret
 }
 
+//TryAuthenticate tries to authenticate the user with a password passed. 
+//
+//If ok, it sets and returns also the two tokens; returns authentication/authorization/error
+//
+//Else returns empty strings and error
+func  TryAuthenticate(context context.Context, user common.UserData,  password string) (string,string,  error){
+	if err:=checkUserPassword(context,user.Username, password); err!=nil{
+		return "","", err
+	}
+	authentication, authorization, err:= getAuthenticationAuthorizationTokens(user.Username)
+	if err!=nil{
+		return "","", err
+	}
+	var val struct {}
+	user.AuthenticationTokens[authentication]=authorization
+	user.AuthorizationTokens[authorization] = val
+	db.UpdateUser(context, user)
+	return authentication, authorization, nil
+}
+//GetAuthorizationTokenForAuthenticationToken get a new Authorizationtoken and set it in the user for an existing authorization token
+func GetAuthorizationTokenForAuthenticationToken(context context.Context, authenticationToken string, user common.UserData ) (string, error){
+	authorization, err:= getAuthorizationToken(user.Username)
+	if err!= nil{
+		return "", err
+	}
+	var val struct{}
+	user.AuthenticationTokens[authenticationToken] = authorization
+	user.AuthorizationTokens[authorization] = val
+	db.UpdateUser(context, user)
+	return authorization, nil
+}
+//RemoveUserAuthentication removes a token from a user/invalidate an authentication user token so it cannot be used anymore
+func  RemoveUserAuthentication(ctx context.Context,username string,authenticationToken string) error {
+	user,err:=FindUser(ctx, username)
+	if err!=nil{
+		return err
+	}
+	if user==nil{
+		return common.NotFoundError{ID:username}
+	}
+	if author, ok:=user.AuthenticationTokens[authenticationToken]; ok{
+		delete(user.AuthorizationTokens, author)
+	}
+	delete(user.AuthenticationTokens, authenticationToken)
+	_, err= db.UpdateUser(ctx, *user)
+	return err
+}
