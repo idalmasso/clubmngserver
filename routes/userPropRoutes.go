@@ -82,7 +82,7 @@ func addUserProp(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	newUserProp, err:=model.AddUserProperty(r.Context(), userProp.Name, userProp.Mandatory, userprops.UserPropertyType(userProp.ValueType))
+	newUserProp, err:=model.AddUserProperty(r.Context(), userProp.Name, userProp.Mandatory, false,userprops.UserPropertyType(userProp.ValueType))
 	if err!=nil{
 		var alreadyExists common.AlreadyExistsError
 		if errors.As(err, &alreadyExists){

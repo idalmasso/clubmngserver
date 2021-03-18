@@ -8,25 +8,25 @@ import (
 )
 
 //AddUserProperty tries to add a user property to the database
-func AddUserProperty(ctx context.Context, userPropertyName string, mandatory bool, userPropertyType userprops.UserPropertyType) (userprops.UserPropertyDefinition,error) {
-	
+func AddUserProperty(ctx context.Context, userPropertyName string, mandatory bool, isSystem bool, userPropertyType userprops.UserPropertyType) (userprops.UserPropertyDefinition,error) {
 	prop, err:=db.FindUserPropertyDefinition(ctx, userPropertyName)
 	if err!=nil{
 		return nil,err
 	}
 	if prop!=nil{
-		return prop,  common.AlreadyExistsError{ID:userPropertyName}
+		return nil,  common.AlreadyExistsError{ID:userPropertyName}
 	}
 	newProp, err:= userprops.NewUserPropertyDefinition(userPropertyType)
 	newProp.SetName(userPropertyName)
 	newProp.SetMandatory(mandatory)
+	newProp.SetIsSystem(isSystem)
 	newProp,err=db.AddUserPropertyDefinition(ctx,newProp)
 	if err!=nil{
 		return nil,err
 	}
 	return newProp, nil
 }
-//DeleteUserProperty deletes a user property (not its values!)
+//DeleteUserProperty deletes a user property (not its values!). Cannot delete system properties
 func DeleteUserProperty(ctx context.Context, userPropertyName string) error {
 	property, err:=db.FindUserPropertyDefinition(ctx, userPropertyName)
 	if err!=nil{
@@ -35,11 +35,13 @@ func DeleteUserProperty(ctx context.Context, userPropertyName string) error {
 	if property==nil{
 		return common.NotFoundError{ID:userPropertyName}
 	}
-	
+	if property.IsSystem(){
+		return common.BadRequestParametersError{Message: "Cannot delete system property"}
+	}
 	return db.RemoveRole(ctx, userPropertyName)
 }
 
-//UpdateUserProperty updates userProperty definitions
+//UpdateUserProperty updates userProperty definitions. Cannot update or delete system properties
 func UpdateUserProperty(ctx context.Context, userPropertyDefinitionName string, isMandatory bool ) (userprops.UserPropertyDefinition, error) {
 	prop, err:=db.FindUserPropertyDefinition(ctx, userPropertyDefinitionName)
 	if err!=nil{
@@ -60,7 +62,7 @@ func GetUserPropertiesList(ctx context.Context) ([]userprops.UserPropertyDefinit
 	return props,err
 }
 
-//GetUserProperty return a list of all properties for users
+//GetUserProperty finds the property definition and return it if exists
 func GetUserProperty(ctx context.Context, userPropertyName string) (userprops.UserPropertyDefinition, error){
 	property, err:=db.FindUserPropertyDefinition(ctx, userPropertyName)
 	if property==nil{

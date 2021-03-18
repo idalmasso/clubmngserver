@@ -46,11 +46,15 @@ func AddUser(ctx context.Context,user common.UserData, password string) (*common
 	return userUpdated, nil
 }
 //ChangePassword change the password to a user. Returns the user updated
-func ChangePassword(ctx context.Context, user common.UserData, newPassword string)(*common.UserData, error){
+func ChangePassword(ctx context.Context, username string, newPassword string)(*common.UserData, error){
+user,err:=FindUser(ctx,username)
+if err!=nil{
+	return nil, common.NotFoundError{ID: username}
+}	
 if err:=user.SetPassword(ctx, newPassword); err!=nil{
 		return nil, err
 	}
-	return db.UpdateUser(ctx, user)
+	return db.UpdateUser(ctx, *user)
 }
 
 func checkUserPassword(context context.Context, username string, password string) error{
@@ -61,6 +65,8 @@ func checkUserPassword(context context.Context, username string, password string
 	return u.CheckPassword(password)
 }
 //CheckToken check if a token string is ok for the authentication token or, if authorizationToken is true, for the authorization token
+//
+//only check if the token is valid, not if it is ok in the list of the user (the logoff removes it)
 func CheckToken (tokenString string, authorizationToken bool) (*jwt.Token, bool) {
 	  token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		//Make sure that the token method conform to "SigningMethodHMAC"
@@ -184,4 +190,24 @@ func  RemoveUserAuthentication(ctx context.Context,username string,authenticatio
 	delete(user.AuthenticationTokens, authenticationToken)
 	_, err= db.UpdateUser(ctx, *user)
 	return err
+}
+//IsValidTokenForUser check if a token is valid and if it is ok for a user, so if it has been created and not revoked
+func IsValidTokenForUser(ctx context.Context, username string, token string, isAuthorization bool) (bool,error){
+	user, err := db.FindUser(ctx, username)
+	if err!=nil{
+		return false, err
+	}
+	if user==nil{
+		return false, common.NotFoundError{ID:username}
+	}
+	_, ok:=CheckToken(token, isAuthorization)
+	if !ok{
+		return false, nil
+	}
+	if isAuthorization{
+		_, ok=user.AuthorizationTokens[token]
+	}else{
+		_,ok=user.AuthenticationTokens[token]
+	}
+	return ok, nil
 }

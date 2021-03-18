@@ -10,7 +10,6 @@ import (
 )
 type addRoleTest struct{
 	testName string
-	testNumber int
 	roleToAdd string
 	privileges []common.SecurityPrivilege
 	resultError bool
@@ -18,50 +17,51 @@ type addRoleTest struct{
 	
 }
 var addRoleTestSet= []addRoleTest{
-	{testName:"Test add admin user again",testNumber:1, roleToAdd: "Admin", privileges:[]common.SecurityPrivilege{common.SecurityAdmin} , resultError: true, errorType: common.AlreadyExistsError{} },
-	{testName:"Test normal user add",testNumber:2, roleToAdd: "NormalUserRole", privileges:[]common.SecurityPrivilege{common.SecuritySelfUserView, common.SecuritySelfUserUpdate, common.SecuritySelfPaymentsView} , resultError: false, errorType: nil },
-	{testName:"Test add new role with other privilege",testNumber:3, roleToAdd: "TestRole2", privileges:[]common.SecurityPrivilege{common.SecuritySelfUserView, common.SecuritySelfUserUpdate, common.SecuritySelfPaymentsView} , resultError: false, errorType: nil },
+	{testName:"Test add admin user again", roleToAdd: "Admin", privileges:[]common.SecurityPrivilege{common.SecurityAdmin} , resultError: true, errorType: common.AlreadyExistsError{} },
+	{testName:"Test normal user add", roleToAdd: "NormalUserRole", privileges:[]common.SecurityPrivilege{common.SecuritySelfUserView, common.SecuritySelfUserUpdate, common.SecuritySelfPaymentsView} , resultError: false, errorType: nil },
+	{testName:"Test add new role with other privilege", roleToAdd: "TestRole2", privileges:[]common.SecurityPrivilege{common.SecuritySelfUserView, common.SecuritySelfUserUpdate, common.SecuritySelfPaymentsView} , resultError: false, errorType: nil },
 }
 
 
 func TestAddRole(t *testing.T){
-	t.Logf("[TestAddRole] - start")
-	for _,db:=range(databasesToTest){
-		InitDB(&db)
-		for _, test:=range(addRoleTestSet){
-			t.Run(test.testName, func (t *testing.T){
-				role, err:=AddRole(context.Background(), test.roleToAdd, test.privileges...)
-				if  test.resultError{
-					if err==nil {
-						t.Errorf("[TestAddRole] - %d - expected test to give error but not", test.testNumber)
-						if role!=nil{
-							t.Cleanup(func(){
-								db.RemoveRole(context.Background(), test.roleToAdd)
-							})
-						}
-					} else if !errors.As(err, &test.errorType){
-						t.Errorf("[TestAddRole] - %d - expected test to give %t type of error, got %t", test.testNumber, test.errorType, err)
+	InitDB(&testDB)
+	for _, test:=range(addRoleTestSet){
+		t.Run(test.testName, func (t *testing.T){
+			role, err:=AddRole(context.Background(), test.roleToAdd, test.privileges...)
+			if  test.resultError{
+				if err==nil {
+					if role!=nil{
+						t.Cleanup(func(){
+							testDB.RemoveRole(context.Background(), test.roleToAdd)
+						})
 					}
-				}else{
-					if err!=nil{
-						t.Errorf("[TestAddRole] - %d - expected test to not give error but it has given", test.testNumber)
-						return
-					} else if role.Name!=test.roleToAdd {
-						t.Errorf("[TestAddRole] - %d - wrong inserted role name, %s instead of %s", test.testNumber, role.Name, test.roleToAdd)
-					} else if !unorderedEqualPrivileges(role.Privileges, test.privileges){
-						t.Errorf("[TestAddRole] - %d - wrong inserted privileges", test.testNumber)
-					}
-					t.Cleanup(func(){
-						db.RemoveRole(context.Background(), test.roleToAdd)
-					})
+					t.Fatalf("Expected test to give error but not")
+				} 
+				if !errors.As(err, &test.errorType){
+					t.Fatalf("Expected test to give %t type of error, got %t", test.errorType, err)
 				}
+				return
+			}
+			t.Cleanup(func(){
+				testDB.RemoveRole(context.Background(), test.roleToAdd)
 			})
-		}
+			if err!=nil{
+				t.Fatal("Expected test to not give error but it has given")
+			} 
+			if role.Name!=test.roleToAdd {
+				t.Fatalf("Wrong inserted role name, %s instead of %s", role.Name, test.roleToAdd)
+			} 
+			if !unorderedEqualPrivileges(role.Privileges, test.privileges){
+				t.Errorf("Wrong inserted privileges")
+			}
+		
+		
+		})
 	}
 }
+
 type deleteRoleTest struct{
 	testName string
-	testNumber int
 	rolesToAdd []string
 	privileges map[string][]common.SecurityPrivilege
 	roleToDelete string
@@ -70,19 +70,19 @@ type deleteRoleTest struct{
 	
 }
 var deleteRoleTestSet= []deleteRoleTest{
-	{testNumber:1, 
+	{
 		rolesToAdd: []string{"role1"}, 
 		privileges:map[string][]common.SecurityPrivilege{ "role1":{common.SecurityAllUsersDelete}} , 
 		roleToDelete: "role1",
 		resultError: false, 
 		errorType: nil },
-	{testNumber:2, 
+	{ 
 		rolesToAdd: []string{"role2"}, 
 		privileges:map[string][]common.SecurityPrivilege{ "role2":{common.SecurityAllUsersDelete}} , 
 		roleToDelete: "role1",
 		resultError: true, 
 		errorType: common.NotFoundError{} },
-	{testNumber:3, 
+	{ 
 		rolesToAdd: []string{"role3"}, 
 		privileges:map[string][]common.SecurityPrivilege{ "role1":{common.SecurityAllUsersDelete}} , 
 		roleToDelete: "role3",
@@ -90,193 +90,179 @@ var deleteRoleTestSet= []deleteRoleTest{
 		errorType: nil },
 }
 func TestDeleteRole(t *testing.T){
-	t.Logf("[TestDeleteRole] - start")
-	for _,db:=range(databasesToTest){
-		
-		InitDB(&db)
-		for _, test:=range(deleteRoleTestSet){
-			t.Run(test.testName, func (t *testing.T){
-				for _, testRole:=range(test.rolesToAdd){
-					_, err:=AddRole(context.Background(), testRole, test.privileges[testRole]...)
-					if err!=nil {
-						t.Errorf("[TestDeleteRole] - %d - cannot add role", test.testNumber)
-						continue
-					}
-					
+	InitDB(&testDB)
+	for _, test:=range(deleteRoleTestSet){
+		t.Run(test.testName, func (t *testing.T){
+			for _, testRole:=range(test.rolesToAdd){
+				_, err:=AddRole(context.Background(), testRole, test.privileges[testRole]...)
+				if err!=nil {
+					t.Errorf("Cannot add role")
+					continue
 				}
-				t.Cleanup(func(){
-					for _, testRole:=range(test.rolesToAdd){
-						db.RemoveRole(context.Background(),testRole)
-					}
-				})
-				err:=DeleteRole(context.Background(), test.roleToDelete)
-				if test.resultError{
-					if err==nil{
-						t.Errorf("[TestToDeleteRole] - %d expected test to give error, does not", test.testNumber)
-					} else if !errors.As(err, &test.errorType){
-						t.Errorf("[TestToDeleteRole] - %d expected test to give error %v, does give %v", test.testNumber,test.errorType, err )
-					}
-				} else {
-					if err!=nil{
-						t.Errorf("[TestDeleteRole] - %d - expected test to not give error but it has given", test.testNumber)
-					} else  {
-						role, err:=GetRole(context.Background(), test.roleToDelete)
-						var errorNotFound common.NotFoundError
-						if err==nil || !errors.As(err, &errorNotFound){
-							t.Errorf("[TestDeleteRole] - %d - expected find after delete to give not found error", test.testNumber)
-						} 
-						if role!=nil{
-							t.Errorf("[TestDeleteRole] - %d - expected find to return null user", test.testNumber)
-						}
-
-					}
+				
+			}
+			t.Cleanup(func(){
+				for _, testRole:=range(test.rolesToAdd){
+					testDB.RemoveRole(context.Background(),testRole)
 				}
 			})
-		}
-	
+			err:=DeleteRole(context.Background(), test.roleToDelete)
+			if test.resultError{
+				if err==nil{
+					t.Fatal("Expected test to give error, does not")
+				} 
+				if !errors.As(err, &test.errorType){
+					t.Fatalf("Expected test to give error %v, does give %v",test.errorType, err )
+				}
+				return
+			} else {
+				if err!=nil{
+					t.Fatal("Expected test to not give error but it has given")
+				} 
+				role, err:=GetRole(context.Background(), test.roleToDelete)
+				var errorNotFound common.NotFoundError
+				if err==nil || !errors.As(err, &errorNotFound){
+					t.Errorf("Expected find after delete to give not found error")
+				} 
+				if role!=nil{
+					t.Errorf("Expected find to return null user")
+				}
+			}
+		})
 	}
 }
 
 func TestDeleteRoleExistsUser(t *testing.T){
-	t.Logf("[TestDeleteRoleExistsUser] - start")
-	for _,db:=range(databasesToTest){
-		
-		InitDB(&db)
+		InitDB(&testDB)
 
 		_, err:=AddRole(context.Background(), "roleToTest", []common.SecurityPrivilege{common.SecurityAddUserEntrances}...)
 		if err!=nil {
-			t.Errorf("[TestDeleteRoleExistsUser] -  cannot add role: %v", err)
+			t.Errorf("Cannot add role: %v", err)
 			return
 		}
 	
 		user,err:=AddUser(context.Background(), common.UserData{Username: "Pippo"}, "Abcd")
 		if err!=nil {
-			t.Errorf("[TestDeleteRoleExistsUser] -  cannot add user: %v", err)
+			t.Errorf("Cannot add user: %v", err)
 			t.Cleanup(func(){
-				db.RemoveRole(context.Background(),"roleToTest")
+				testDB.RemoveRole(context.Background(),"roleToTest")
 			})
 			return
 		}
 		t.Cleanup(func(){
-			db.RemoveRole(context.Background(),"roleToTest")
-			db.RemoveUser(context.Background(), *user)
+			testDB.RemoveRole(context.Background(),"roleToTest")
+			testDB.RemoveUser(context.Background(), *user)
 		})
 		user, err=AddRoleToUser(context.Background(),user.Username,"roleToTest")
 		if err!=nil {
-			t.Errorf("[TestDeleteRoleExistsUser] -  cannot add role to user: %v",err)
+			t.Errorf("Cannot add role to user: %v",err)
 			return
 		}
 		err=DeleteRole(context.Background(), "roleToTest")
 		
 		if err==nil || !strings.Contains(err.Error(), "Users have the role"){
-			t.Errorf("[TestDeleteRoleExistsUser] - expected test to give error with 'users have the role', does not")
+			t.Fatalf("Expected test to give error with 'users have the role', does not")
 		}
 	}
-}
+
 
 func TestGetAllRoles(t *testing.T){
-	t.Logf("[TestGetAllRoles] - start")
-	for _,db:=range(databasesToTest){
-		
-		InitDB(&db)
-		roles, err:=GetAllRoles(context.Background())
-		if err!=nil{
-			t.Errorf("[TestGetAllRoles] - cannot get all roles after initialization")
-		} else if len(roles)!=len(rolesToBeAdded){
-			t.Errorf("[TestGetAllRoles] - len roles =%d, expected %d role after initialization : %v", len(roles), len(rolesToBeAdded),roles)
-		} else{
-			for _,role:=range(roles){
-				_, ok:=rolesToBeAdded[role.Name]
-				if !ok{
-					t.Fatalf("[TestGetAllRoles] - find role %s in db roles but not in initialized ones", role.Name)
-				}
-				if !unorderedEqualPrivileges( role.Privileges, rolesToBeAdded[role.Name]){
-					t.Fatalf("[TestGetAllRoles] - privileges expected different then in role %s", role.Name)
-				}
-			}
-			_,err=AddRole(context.Background(), "role1", common.SecurityAllUsersPaymentsView)
-			t.Cleanup(func(){
-				db.RemoveRole(context.Background(), "role1")
-			})
-			if err!=nil{
-				t.Errorf("[TestGetAllRoles] - cannot add one role after initialization")
-			}
-			roles, err:=GetAllRoles(context.Background())
-			if err!=nil{
-				t.Errorf("[TestGetAllRoles] - cannot get all roles after initialization and added 1")
-			} else if len(roles)!=len(rolesToBeAdded)+1{
-				t.Errorf("[TestGetAllRoles] - len roles =%d, expected %d role after initialization and added 1", len(roles), len(rolesToBeAdded)+1)
-			} else{
-				for _,role:=range(roles){
-					_, ok:=rolesToBeAdded[role.Name]
-					if !ok && role.Name!="role1"{
-						t.Errorf("[TestGetAllRoles] - find role %s in db roles but not in initialized ones", role.Name)
-						return
-					}
-					if role.Name=="role1"{
-						if !unorderedEqualPrivileges( role.Privileges, []common.SecurityPrivilege{common.SecurityAllUsersPaymentsView}){
-							t.Errorf("[TestGetAllRoles] - privileges expected different then in role %s", role.Name)
-							return
-						}
-					}
-				}
+	InitDB(&testDB)
+	roles, err:=GetAllRoles(context.Background())
+	if err!=nil{
+		t.Fatalf("Cannot get all roles after initialization")
+	} 
+	if len(roles)!=len(rolesToBeAdded){
+		t.Fatalf("Len roles =%d, expected %d role after initialization : %v", len(roles), len(rolesToBeAdded),roles)
+	} 
+	for _,role:=range(roles){
+		_, ok:=rolesToBeAdded[role.Name]
+		if !ok{
+			t.Fatalf("Found role %s in db roles but not in initialized ones", role.Name)
+		}
+		if !unorderedEqualPrivileges( role.Privileges, rolesToBeAdded[role.Name]){
+			t.Fatalf("Privileges expected different then in role %s", role.Name)
+		}
+	}
+	_,err=AddRole(context.Background(), "role1", common.SecurityAllUsersPaymentsView)
+	t.Cleanup(func(){
+		testDB.RemoveRole(context.Background(), "role1")
+	})
+	if err!=nil{
+		t.Fatalf("Cannot add one role after initialization")
+	}
+	roles, err=GetAllRoles(context.Background())
+	if err!=nil{
+		t.Fatalf("Cannot get all roles after initialization and added 1")
+	} 
+	if len(roles)!=len(rolesToBeAdded)+1{
+		t.Fatalf("Len roles =%d, expected %d role after initialization and added 1", len(roles), len(rolesToBeAdded)+1)
+	} 
+	for _,role:=range(roles){
+		_, ok:=rolesToBeAdded[role.Name]
+		if !ok && role.Name!="role1"{
+			t.Fatalf("Find role %s in db roles but not in initialized ones", role.Name)
+		}
+		if role.Name=="role1"{
+			if !unorderedEqualPrivileges( role.Privileges, []common.SecurityPrivilege{common.SecurityAllUsersPaymentsView}){
+				t.Fatalf("Privileges expected different then in role %s", role.Name)
 			}
 		}
 	}
 }
 
+
 func TestGetSingleRole(t *testing.T){
-	t.Logf("[TestGetSingleRole] - start")
-	for _,db:=range(databasesToTest){
-		
-		InitDB(&db)
-		t.Run("Get all roles initialization one by one", func(t *testing.T){
-			for roleName, privileges:=range(rolesToBeAdded){
-				role, err:=GetRole(context.Background(), roleName)
-				if err!=nil{
-					t.Fatalf("Cannot get role %s", roleName)
-				}
-				if role==nil{
-					t.Fatalf("Role %s nil", roleName)
-				}
-				if !unorderedEqualPrivileges(privileges, role.Privileges){
-					t.Fatalf("Privileges on role %s are not equal to the ones expected, %v - %v", roleName, role.Privileges,privileges)
-				}
-			}
-		})
-		t.Run("Get one role not existent", func(t *testing.T){
-			role, err:=GetRole(context.Background(), "NotExistsRole")
-			var notFoundError common.NotFoundError
-			if err==nil{
-				t.Errorf("Error get Role nil")
-			} else if !errors.As(err, &notFoundError){
-				t.Errorf("Error get Role is not of correct type")
-			} else if role != nil{
-				t.Errorf("Role is not nil")
-			}
-		})
-		t.Run("Get one role after having added it", func(t *testing.T){
-			var privs = []common.SecurityPrivilege{common.SecurityAllUsersDelete, common.SecurityLinkedUsersPaymentsView, common.SecurityRolesAdd}
-			_,err:=AddRole(context.Background(), "ExistsRole",privs... )
+	InitDB(&testDB)
+	t.Run("Get all roles initialization one by one", func(t *testing.T){
+		for roleName, privileges:=range(rolesToBeAdded){
+			role, err:=GetRole(context.Background(), roleName)
 			if err!=nil{
-				t.Fatal("Cannot run test, cannot add role ExistsRole")
+				t.Fatalf("Cannot get role %s", roleName)
 			}
-			t.Cleanup(func(){
-				db.RemoveRole(context.Background(), "ExistsRole")
-			})
-			role, err:=GetRole(context.Background(), "ExistsRole")
-			if err!=nil{
-				t.Fatalf("Error in GetRole: %v", err)
+			if role==nil{
+				t.Fatalf("Role %s nil", roleName)
 			}
-			if role.Name!="ExistsRole"{
-				t.Fatalf("Role name is '%s', not 'ExistsRole'", role.Name)
+			if !unorderedEqualPrivileges(privileges, role.Privileges){
+				t.Fatalf("Privileges on role %s are not equal to the ones expected, %v - %v", roleName, role.Privileges,privileges)
 			}
-			if !unorderedEqualPrivileges(role.Privileges, privs){
-				t.Fatalf("Privileges on role %s are not equal to the ones expected, %v - %v", role.Name,  role.Privileges,privs)
-			}
+		}
+	})
+	t.Run("Get one role not existent", func(t *testing.T){
+		role, err:=GetRole(context.Background(), "NotExistsRole")
+		var notFoundError common.NotFoundError
+		if err==nil{
+			t.Fatalf("Error get Role nil")
+		} 
+		if !errors.As(err, &notFoundError){
+			t.Fatalf("Error get Role is not of correct type")
+		} 
+		if role != nil{
+			t.Errorf("Role is not nil")
+		}
+	})
+	t.Run("Get one role after having added it", func(t *testing.T){
+		var privs = []common.SecurityPrivilege{common.SecurityAllUsersDelete, common.SecurityLinkedUsersPaymentsView, common.SecurityRolesAdd}
+		_,err:=AddRole(context.Background(), "ExistsRole",privs... )
+		if err!=nil{
+			t.Fatal("Cannot run test, cannot add role ExistsRole")
+		}
+		t.Cleanup(func(){
+			testDB.RemoveRole(context.Background(), "ExistsRole")
 		})
-	}
+		role, err:=GetRole(context.Background(), "ExistsRole")
+		if err!=nil{
+			t.Fatalf("Error in GetRole: %v", err)
+		}
+		if role.Name!="ExistsRole"{
+			t.Fatalf("Role name is '%s', not 'ExistsRole'", role.Name)
+		}
+		if !unorderedEqualPrivileges(role.Privileges, privs){
+			t.Fatalf("Privileges on role %s are not equal to the ones expected, %v - %v", role.Name,  role.Privileges,privs)
+		}
+	})
 }
+
 
 type updateRoleTest struct{
 	testName string
@@ -325,14 +311,12 @@ var updateRoleTestSet= []updateRoleTest{
 		errorType: nil},
 	}
 func TestUpdateRoles(t *testing.T){
-		t.Logf("[TestUpdateRoles] - start")
-	for _,db:=range(databasesToTest){
-		InitDB(&db)
+		InitDB(&testDB)
 		for _, test:=range(updateRoleTestSet){
 			t.Run(test.testName, func (t *testing.T){
 				_, err:=AddRole(context.Background(), test.roleToAdd, test.privilegesBefore...)
 				t.Cleanup(func(){
-					db.RemoveRole(context.Background(), test.roleToAdd)
+					testDB.RemoveRole(context.Background(), test.roleToAdd)
 				})
 				if err!=nil{
 					t.Fatal("Cannot add the role")
@@ -360,7 +344,7 @@ func TestUpdateRoles(t *testing.T){
 			})
 		}
 	}
-}
+
 
 type addRoleToUserTest struct{
 	testName string
@@ -407,17 +391,15 @@ var addRoleToUserTestSet= []addRoleToUserTest{
 		errorType: nil },
 	}
 func TestAddRolesToUser(t *testing.T){
-	t.Logf("[TestAddRolesToUser] - start")
-	for _,db:=range(databasesToTest){
-		InitDB(&db)
+		InitDB(&testDB)
 		for _, test:=range(addRoleToUserTestSet){
 			t.Run(test.testName, func (t *testing.T){
 				_, err:=AddRole(context.Background(), test.roleToCreate, test.privileges...)
 				_, err2 := AddUser(context.Background(), common.UserData{Username: test.userToCreate}, "Abcd")
 
 				t.Cleanup(func(){
-					db.RemoveUser(context.Background(), common.UserData{Username:test.userToCreate})
-					db.RemoveRole(context.Background(), test.roleToCreate)
+					testDB.RemoveUser(context.Background(), common.UserData{Username:test.userToCreate})
+					testDB.RemoveRole(context.Background(), test.roleToCreate)
 				})
 				if err!=nil{
 					t.Fatal("Cannot add the role")
@@ -452,7 +434,7 @@ func TestAddRolesToUser(t *testing.T){
 				}
 			})
 		}
-	}
+	
 }
 
 
@@ -518,14 +500,12 @@ var isRoleAuthorizedTestSet= []isRoleAuthorizedTest{
 		errorType: common.NotFoundError{} },
 }
 func TestIsRoleAuthorized(t *testing.T){
-	t.Logf("[TestIsRoleAuthorized] - start")
-	for _,db:=range(databasesToTest){
-		InitDB(&db)
+		InitDB(&testDB)
 		for _, test:=range(isRoleAuthorizedTestSet){
 			t.Run(test.testName, func (t *testing.T){
 				_, err:=AddRole(context.Background(), test.roleToAdd, test.rolePrivileges...)
 				t.Cleanup(func(){
-					db.RemoveRole(context.Background(), test.roleToAdd)
+					testDB.RemoveRole(context.Background(), test.roleToAdd)
 				})
 				if err!=nil{
 					t.Fatal("Cannot add the role")
@@ -541,28 +521,27 @@ func TestIsRoleAuthorized(t *testing.T){
 					if !errors.As(err, &test.errorType){
 						t.Fatalf("Wrong expected errortype, got %v, expected %v", err, test.errorType)
 					}
-				} else {
-					if err!=nil{
-						t.Fatalf("Not expected error, got one: %v", err)
-					}
-					if auth!=test.resultValue{
-						t.Fatalf("Expected result %v, got %v", test.resultValue, auth)
-					}
+					return
+				} 
+				if err!=nil{
+					t.Fatalf("Not expected error, got one: %v", err)
 				}
+				if auth!=test.resultValue{
+					t.Fatalf("Expected result %v, got %v", test.resultValue, auth)
+				}
+			
 			})
 		}
-	}
+	
 }
 
 func TestGetUserRole(t *testing.T){
-	t.Logf("[TestGetUserRole] - start")
-	for _,db:=range(databasesToTest){
-		InitDB(&db)
+		InitDB(&testDB)
 		t.Run("Get user role exists role", func (t *testing.T){
 			_, err:=AddRole(context.Background(), "role01", common.SecurityAdmin)
 
 			t.Cleanup(func(){
-				db.RemoveRole(context.Background(), "role01")
+				testDB.RemoveRole(context.Background(), "role01")
 			})
 			if err!=nil{
 				t.Fatal("Cannot add the role")
@@ -594,5 +573,5 @@ func TestGetUserRole(t *testing.T){
 				t.Fatalf("Error  gotten but wrong type: %v but expected %v", err, common.NotFoundError{})
 			}
 		})
-	}
+	
 }

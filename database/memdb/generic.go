@@ -22,4 +22,16 @@ func (db *MemoryDB) Init(){
 	if db.users==nil{
 		db.users=make(map[string]*common.UserData)
 	}
+	if db.userProps==nil{
+		db.userProps=make(map[string]userprops.UserPropertyDefinition)
+	}
+}
+
+type MemoryDBTest struct{
+	MemoryDB
+}
+func(db *MemoryDBTest) TearDown(){
+	db.roles=nil
+	db.userProps=nil
+	db.users=nil
 }
