@@ -1,4 +1,4 @@
-package models
+package app
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 )
 
 //AddUserProperty tries to add a user property to the database
-func AddUserProperty(ctx context.Context, userPropertyName string, mandatory bool, isSystem bool, userPropertyType userprops.UserPropertyType) (userprops.UserPropertyDefinition,error) {
-	prop, err:=db.FindUserPropertyDefinition(ctx, userPropertyName)
+func(app *App) AddUserProperty(ctx context.Context, userPropertyName string, mandatory bool, isSystem bool, userPropertyType userprops.UserPropertyType) (userprops.UserPropertyDefinition,error) {
+	prop, err:=app.db.FindUserPropertyDefinition(ctx, userPropertyName)
 	if err!=nil{
 		return nil,err
 	}
@@ -20,15 +20,15 @@ func AddUserProperty(ctx context.Context, userPropertyName string, mandatory boo
 	newProp.SetName(userPropertyName)
 	newProp.SetMandatory(mandatory)
 	newProp.SetIsSystem(isSystem)
-	newProp,err=db.AddUserPropertyDefinition(ctx,newProp)
+	newProp,err=app.db.AddUserPropertyDefinition(ctx,newProp)
 	if err!=nil{
 		return nil,err
 	}
 	return newProp, nil
 }
 //DeleteUserProperty deletes a user property (not its values!). Cannot delete system properties
-func DeleteUserProperty(ctx context.Context, userPropertyName string) error {
-	property, err:=db.FindUserPropertyDefinition(ctx, userPropertyName)
+func(app *App) DeleteUserProperty(ctx context.Context, userPropertyName string) error {
+	property, err:=app.db.FindUserPropertyDefinition(ctx, userPropertyName)
 	if err!=nil{
 		return err
 	}
@@ -38,12 +38,12 @@ func DeleteUserProperty(ctx context.Context, userPropertyName string) error {
 	if property.IsSystem(){
 		return common.BadRequestParametersError{Message: "Cannot delete system property"}
 	}
-	return db.RemoveRole(ctx, userPropertyName)
+	return app.db.RemoveRole(ctx, userPropertyName)
 }
 
 //UpdateUserProperty updates userProperty definitions. Cannot update or delete system properties
-func UpdateUserProperty(ctx context.Context, userPropertyDefinitionName string, isMandatory bool ) (userprops.UserPropertyDefinition, error) {
-	prop, err:=db.FindUserPropertyDefinition(ctx, userPropertyDefinitionName)
+func(app *App) UpdateUserProperty(ctx context.Context, userPropertyDefinitionName string, isMandatory bool ) (userprops.UserPropertyDefinition, error) {
+	prop, err:=app.db.FindUserPropertyDefinition(ctx, userPropertyDefinitionName)
 	if err!=nil{
 		return nil,err
 	}
@@ -52,19 +52,19 @@ func UpdateUserProperty(ctx context.Context, userPropertyDefinitionName string, 
 	}
 	prop.SetMandatory(isMandatory)
 	
-	_, err=db.UpdateUserPropertyDefinition(ctx, prop)
+	_, err=app.db.UpdateUserPropertyDefinition(ctx, prop)
 	
 	return prop,err
 }
 //GetUserPropertiesList return a list of all propert definitions
-func GetUserPropertiesList(ctx context.Context) ([]userprops.UserPropertyDefinition, error){
-	props, err:=db.GetAllUserPropertyDefinitions(ctx)
+func(app *App) GetUserPropertiesList(ctx context.Context) ([]userprops.UserPropertyDefinition, error){
+	props, err:=app.db.GetAllUserPropertyDefinitions(ctx)
 	return props,err
 }
 
 //GetUserProperty finds the property definition and return it if exists
-func GetUserProperty(ctx context.Context, userPropertyName string) (userprops.UserPropertyDefinition, error){
-	property, err:=db.FindUserPropertyDefinition(ctx, userPropertyName)
+func (app *App)GetUserProperty(ctx context.Context, userPropertyName string) (userprops.UserPropertyDefinition, error){
+	property, err:=app.db.FindUserPropertyDefinition(ctx, userPropertyName)
 	if property==nil{
 		return nil, common.NotFoundError{ID: userPropertyName}
 	}

@@ -7,7 +7,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/idalmasso/clubmngserver/common"
-	model "github.com/idalmasso/clubmngserver/models"
 )
 
 //RoleStructValue is the value sent and received from web service
@@ -37,16 +36,16 @@ func  (roleValue *RoleStructValue)  toDBRole()( common.SecurityRole) {
 	return role
 }
 
-func addRolesRouterEndpoints(r *mux.Router) {
+func(appRoutes *AppRoutes) addRolesRouterEndpoints(r *mux.Router) {
 	reqRouter:=r.PathPrefix("/roles").Subrouter()
 	privRouter:=r.PathPrefix("/privileges").Subrouter()
-	reqRouter.Use(checkTokenAuthenticationHandler)
-	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(allRoles)).Methods("GET")
-	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(viewRole)).Methods("GET")
-	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityRolesAdd)(addRole)).Methods("POST")
-	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(common.SecurityRolesUpdate)(updateRole)).Methods("PUT")
-	reqRouter.HandleFunc("/{roleName}", checkUserHasPrivilegeMiddleware(common.SecurityRolesDelete)(removeRole)).Methods("DELETE")
-	privRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(listPrivileges)).Methods("GET")
+	reqRouter.Use(appRoutes.checkTokenAuthenticationHandler)
+	reqRouter.HandleFunc("/", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(appRoutes.allRoles)).Methods("GET")
+	reqRouter.HandleFunc("/{roleName}", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(appRoutes.viewRole)).Methods("GET")
+	reqRouter.HandleFunc("/", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityRolesAdd)(appRoutes.addRole)).Methods("POST")
+	reqRouter.HandleFunc("/{roleName}", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityRolesUpdate)(appRoutes.updateRole)).Methods("PUT")
+	reqRouter.HandleFunc("/{roleName}", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityRolesDelete)(appRoutes.removeRole)).Methods("DELETE")
+	privRouter.HandleFunc("/", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityRolesView)(listPrivileges)).Methods("GET")
 }
 
 func listPrivileges(w http.ResponseWriter, r *http.Request){
@@ -54,8 +53,8 @@ func listPrivileges(w http.ResponseWriter, r *http.Request){
 	sendJSONResponse(w,privileges,http.StatusOK )
 }
 
-func allRoles(w http.ResponseWriter, r *http.Request){
-	roles,err:=model.GetAllRoles(r.Context())
+func(appRoutes *AppRoutes) allRoles(w http.ResponseWriter, r *http.Request){
+	roles,err:=appRoutes.App.GetAllRoles(r.Context())
 	if err!=nil{
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -69,14 +68,14 @@ func allRoles(w http.ResponseWriter, r *http.Request){
 	}
 	sendJSONResponse(w, rolesReturn, http.StatusOK)
 }
-func viewRole(w http.ResponseWriter, r *http.Request){
+func(appRoutes *AppRoutes) viewRole(w http.ResponseWriter, r *http.Request){
 	params:=mux.Vars(r)
 	roleName, ok:=params["roleName"]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	role, err:=model.GetRole(r.Context(),roleName)
+	role, err:=appRoutes.App.GetRole(r.Context(),roleName)
 	if err!=nil {
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){
@@ -92,7 +91,7 @@ func viewRole(w http.ResponseWriter, r *http.Request){
 	roleRequest.initFromDBRole(*role)
 	sendJSONResponse(w, roleRequest, http.StatusOK)
 }
-func addRole(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)addRole(w http.ResponseWriter, r *http.Request){
 	var roleRequest RoleStructValue
 	if err:=json.NewDecoder(r.Body).Decode(&roleRequest); err!=nil{
 		w.WriteHeader(http.StatusInternalServerError)
@@ -100,7 +99,7 @@ func addRole(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	newRole := roleRequest.toDBRole()
-	addedUser, err:=model.AddRole(r.Context(), newRole.Name, newRole.Privileges...)
+	addedUser, err:=appRoutes.App.AddRole(r.Context(), newRole.Name, newRole.Privileges...)
 	if err!=nil{
 		var alreadyExists common.AlreadyExistsError
 		if errors.As(err, &alreadyExists){
@@ -115,7 +114,7 @@ func addRole(w http.ResponseWriter, r *http.Request){
 	roleRequest.initFromDBRole(*addedUser)
 	sendJSONResponse(w, roleRequest, http.StatusOK)
 }
-func updateRole(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)updateRole(w http.ResponseWriter, r *http.Request){
 	var roleRequest RoleStructValue
 	if err:=json.NewDecoder(r.Body).Decode(&roleRequest); err!=nil{
 		w.WriteHeader(http.StatusInternalServerError)
@@ -129,7 +128,7 @@ func updateRole(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	newRole:=roleRequest.toDBRole()
-	_,err:=model.UpdateRole(r.Context(), newRole.Name, newRole.Privileges...)
+	_,err:=appRoutes.App.UpdateRole(r.Context(), newRole.Name, newRole.Privileges...)
 	if err!=nil{
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){
@@ -145,7 +144,7 @@ func updateRole(w http.ResponseWriter, r *http.Request){
 	roleRequest.initFromDBRole(newRole)
 	sendJSONResponse(w, roleRequest, http.StatusOK)
 }
-func removeRole(w http.ResponseWriter, r *http.Request){
+func(appRoutes *AppRoutes) removeRole(w http.ResponseWriter, r *http.Request){
 	
 	params:=mux.Vars(r)
 	roleName, ok:=params["roleName"]
@@ -153,7 +152,7 @@ func removeRole(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err:=model.DeleteRole(r.Context(), roleName)
+	err:=appRoutes.App.DeleteRole(r.Context(), roleName)
 	if err!=nil{
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){

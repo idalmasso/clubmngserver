@@ -1,4 +1,4 @@
-package models
+package app
 
 import (
 	"context"
@@ -10,28 +10,33 @@ import (
 	"github.com/idalmasso/clubmngserver/database"
 	"github.com/idalmasso/clubmngserver/database/memdb"
 )
-var testDB database.ClubDb
+
+var testDatabase database.ClubDb
 func TestMain(m *testing.M){
 	var code int
+	
 	for _,clubDB:=range(databasesToTest){
-		testDB=clubDB
-		log.Printf("Using database %T\n", testDB)
+		testDatabase=clubDB
+		
+		log.Printf("Using database %T\n", testDatabase)
 		code=m.Run()
 		log.Printf("Returned code %d\n", code)
 		clubDB.TearDown()
 		clubDB=nil
-		testDB=nil
+		testDatabase=nil
 	}
 	os.Exit(code)
 }
 var databasesToTest =[]database.ClubDbTest{ &memdb.MemoryDBTest{} }
 func TestInitDB(t *testing.T){
-	InitDB(&testDB)
+	var testApp App
+	testApp.InitDB(&testDatabase)
 }
 
 func TestInitDBAndUser(t *testing.T){
-	InitDB(&testDB)
-	roles, err:=GetAllRoles(context.Background())
+	var testApp App
+	testApp.InitDB(&testDatabase)
+	roles, err:=testApp.GetAllRoles(context.Background())
 	if err!=nil{
 		t.Error(err)
 		return
@@ -49,7 +54,7 @@ func TestInitDBAndUser(t *testing.T){
 		}
 
 	}
-	users,err := db.GetAllUsers(context.Background())
+	users,err := testApp.GetUsersList(context.Background())
 	if err!=nil{
 		t.Fatalf("Cannot find users %v",err.Error())
 	}

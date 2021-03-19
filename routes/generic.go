@@ -10,16 +10,18 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
+	"github.com/idalmasso/clubmngserver/app"
 	"github.com/idalmasso/clubmngserver/common"
-	model "github.com/idalmasso/clubmngserver/models"
 )
-
+type AppRoutes struct{
+	App app.App
+}
 //AddRouteEndpoints build the mux router with all endpoints
-func AddRouteEndpoints(r *mux.Router) *mux.Router {
+func (appRoutes *AppRoutes)AddRouteEndpoints(r *mux.Router) *mux.Router {
 	apiRouter:=r.PathPrefix("/api").Subrouter()
-	addAuthRouterEndpoints(apiRouter)
-	addRolesRouterEndpoints(apiRouter)
-	addUsersRouterEndpoints(apiRouter)
+	appRoutes.addAuthRouterEndpoints(apiRouter)
+	appRoutes.addRolesRouterEndpoints(apiRouter)
+	appRoutes.addUsersRouterEndpoints(apiRouter)
 	return r
 }
 
@@ -39,7 +41,7 @@ func sendJSONResponse(w http.ResponseWriter, data interface{}, statusCode int) {
 	}
 }
 
-func checkTokenAuthenticationHandler(next http.Handler) http.Handler{
+func (appRoutes *AppRoutes)checkTokenAuthenticationHandler(next http.Handler) http.Handler{
 	return http.HandlerFunc( func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")
 		bearerToken := strings.Split(header, " ")
@@ -52,7 +54,7 @@ func checkTokenAuthenticationHandler(next http.Handler) http.Handler{
 			return
 		}
 		
-		token, ok :=model.CheckToken(bearerToken[1], true); 
+		token, ok :=appRoutes.App.CheckToken(bearerToken[1], true); 
 		if !ok{
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -66,7 +68,7 @@ func checkTokenAuthenticationHandler(next http.Handler) http.Handler{
 				return 
 			}
 			//check if username actually exists
-			user,err:= model.FindUser(r.Context(), username);
+			user,err:= appRoutes.App.FindUser(r.Context(), username);
 			if err!=nil{
 				var notFoundError common.NotFoundError
 				if errors.As(err, &notFoundError){
@@ -85,7 +87,7 @@ func checkTokenAuthenticationHandler(next http.Handler) http.Handler{
 }
 
 
-func checkTokenAuthorizationHandler(next http.HandlerFunc) http.HandlerFunc{
+func (appRoutes *AppRoutes)checkTokenAuthorizationHandler(next http.HandlerFunc) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")
 		bearerToken := strings.Split(header, " ")
@@ -98,7 +100,7 @@ func checkTokenAuthorizationHandler(next http.HandlerFunc) http.HandlerFunc{
 			return
 		}
 		
-		token, ok :=model.CheckToken(bearerToken[1], false); 
+		token, ok :=appRoutes.App.CheckToken(bearerToken[1], false); 
 		if !ok{
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -112,7 +114,7 @@ func checkTokenAuthorizationHandler(next http.HandlerFunc) http.HandlerFunc{
 				return 
 			}
 			//check if username actually exists
-			user,err:= model.FindUser(r.Context(), username); 
+			user,err:= appRoutes.App.FindUser(r.Context(), username); 
 			if err!=nil{
 				var notFoundError common.NotFoundError
 				if errors.As(err, &notFoundError){
@@ -139,7 +141,7 @@ func isUsernameContextOk(username string, r *http.Request) bool {
 	}
 	return true
 }
-func checkUserHasPrivilegeMiddleware(privileges ...common.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
+func (appRoutes *AppRoutes)checkUserHasPrivilegeMiddleware(privileges ...common.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
 	return func (next http.HandlerFunc) http.HandlerFunc{
 		return func(w http.ResponseWriter, r *http.Request) {
 			userCtx, ok:=context.Get(r, "user").(common.UserData); 
@@ -148,7 +150,7 @@ func checkUserHasPrivilegeMiddleware(privileges ...common.SecurityPrivilege) fun
 				return
 			}
 			for _,privilege:=range(privileges){
-				if authorized, err:=model.IsRoleAuthorized(r.Context(), userCtx.Role, privilege ); err!=nil || !authorized{
+				if authorized, err:=appRoutes.App.IsRoleAuthorized(r.Context(), userCtx.Role, privilege ); err!=nil || !authorized{
 					w.WriteHeader(http.StatusUnauthorized)
 					if err!=nil{
 						w.Write([]byte(err.Error()))
@@ -162,7 +164,7 @@ func checkUserHasPrivilegeMiddleware(privileges ...common.SecurityPrivilege) fun
 	}
 }
 
-func checkUserHasAtLeastOnePrivilegeMiddleware(privileges ...common.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
+func (appRoutes *AppRoutes)checkUserHasAtLeastOnePrivilegeMiddleware(privileges ...common.SecurityPrivilege) func(http.HandlerFunc) http.HandlerFunc{
 	return func (next http.HandlerFunc) http.HandlerFunc{
 		return func(w http.ResponseWriter, r *http.Request) {
 			userCtx, ok:=context.Get(r, "user").(common.UserData); 
@@ -171,7 +173,7 @@ func checkUserHasAtLeastOnePrivilegeMiddleware(privileges ...common.SecurityPriv
 				return
 			}
 			for _,privilege:=range(privileges){
-				if authorized, err:=model.IsRoleAuthorized(r.Context(), userCtx.Role, privilege ); err==nil && authorized{
+				if authorized, err:=appRoutes.App.IsRoleAuthorized(r.Context(), userCtx.Role, privilege ); err==nil && authorized{
 					next(w,r)
 					return
 				}

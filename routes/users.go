@@ -7,24 +7,20 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/idalmasso/clubmngserver/common"
-	"github.com/idalmasso/clubmngserver/models"
-	model "github.com/idalmasso/clubmngserver/models"
 )
 
-
-var routesUsersProtected =[...]string {"/logout", "/token"}
 //addAuthRouterEndpoints add the actual endpoints for auth api
-func addUsersRouterEndpoints(r *mux.Router) {
+func (appRoutes *AppRoutes)addUsersRouterEndpoints(r *mux.Router) {
 	usersRoute:=r.PathPrefix("/users").Subrouter()
-	usersRoute.Use(checkTokenAuthenticationHandler)
-	usersRoute.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityAllUsersView)(getAllUsers)).Methods("GET")
-	usersRoute.HandleFunc("/{userName}", checkUserHasPrivilegeMiddleware(common.SecurityAllUsersView, common.SecurityLinkedUsersView, common.SecuritySelfUserView)(getAllUsers)).Methods("GET")
+	usersRoute.Use(appRoutes.checkTokenAuthenticationHandler)
+	usersRoute.HandleFunc("/", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityAllUsersView)(appRoutes.getAllUsers)).Methods("GET")
+	usersRoute.HandleFunc("/{userName}", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityAllUsersView, common.SecurityLinkedUsersView, common.SecuritySelfUserView)(appRoutes.getAllUsers)).Methods("GET")
 	//usersRoute.HandleFunc("/", allUsers)
 }
 
 
-func getAllUsers(w http.ResponseWriter, r *http.Request){
-	users,err:=model.GetUsersList(r.Context())
+func (appRoutes *AppRoutes)getAllUsers(w http.ResponseWriter, r *http.Request){
+	users,err:=appRoutes.App.GetUsersList(r.Context())
 	if err!=nil{
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -33,19 +29,19 @@ func getAllUsers(w http.ResponseWriter, r *http.Request){
 	sendJSONResponse(w, users, http.StatusOK)
 }
 
-func getSingleUser(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)getSingleUser(w http.ResponseWriter, r *http.Request){
 	params:=mux.Vars(r)
 	userName, ok:=params["userName"]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	canSeeAllUsers,err:=models.IsRoleAuthorized(r.Context(), context.Get(r, "user").(common.UserData).Role, common.SecurityAllUsersView)
+	canSeeAllUsers,err:=appRoutes.App.IsRoleAuthorized(r.Context(), context.Get(r, "user").(common.UserData).Role, common.SecurityAllUsersView)
 	if err!=nil{
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	canSeeLinkedUsers,err:=models.IsRoleAuthorized(r.Context(), context.Get(r, "user").(common.UserData).Role, common.SecurityLinkedUsersView)
+	canSeeLinkedUsers,err:=appRoutes.App.IsRoleAuthorized(r.Context(), context.Get(r, "user").(common.UserData).Role, common.SecurityLinkedUsersView)
 	if err!=nil{
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -56,7 +52,7 @@ func getSingleUser(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	user, err:=model.FindUser(r.Context(),userName)
+	user, err:=appRoutes.App.FindUser(r.Context(),userName)
 	if err!=nil {
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){

@@ -8,7 +8,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/idalmasso/clubmngserver/common"
 	"github.com/idalmasso/clubmngserver/common/userprops"
-	model "github.com/idalmasso/clubmngserver/models"
 )
 type UserPropStructValue struct{
 	Name string `json:"name"`
@@ -23,18 +22,18 @@ func (userProperty *UserPropStructValue) initFromDBUserProp(property userprops.U
 }
 
 
-func addUserPropsDefinitionRouterEndpoints(r *mux.Router) {
+func(appRoutes *AppRoutes) addUserPropsDefinitionRouterEndpoints(r *mux.Router) {
 	reqRouter:=r.PathPrefix("/userprop-definitions").Subrouter()
-	reqRouter.Use(checkTokenAuthenticationHandler)
-	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityUserPropertyDefinitionView)(getAllUserProps)).Methods("GET")
-	reqRouter.HandleFunc("/{userpropname}", checkUserHasPrivilegeMiddleware(common.SecurityUserPropertyDefinitionView)(getSingleUserProp)).Methods("GET")
-	reqRouter.HandleFunc("/", checkUserHasPrivilegeMiddleware(common.SecurityUserPropertyDefinitionAdd)(addUserProp)).Methods("POST")
-	reqRouter.HandleFunc("/{userpropname}", checkUserHasPrivilegeMiddleware(common.SecurityUserPropertyDefinitionUpdate)(updateUserProp)).Methods("PUT")
-	reqRouter.HandleFunc("/{userpropname}", checkUserHasPrivilegeMiddleware(common.SecurityUserPropertyDefinitionRemove)(removeUserProp)).Methods("DELETE")
+	reqRouter.Use(appRoutes.checkTokenAuthenticationHandler)
+	reqRouter.HandleFunc("/", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityUserPropertyDefinitionView)(appRoutes.getAllUserProps)).Methods("GET")
+	reqRouter.HandleFunc("/{userpropname}", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityUserPropertyDefinitionView)(appRoutes.getSingleUserProp)).Methods("GET")
+	reqRouter.HandleFunc("/", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityUserPropertyDefinitionAdd)(appRoutes.addUserProp)).Methods("POST")
+	reqRouter.HandleFunc("/{userpropname}", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityUserPropertyDefinitionUpdate)(appRoutes.updateUserProp)).Methods("PUT")
+	reqRouter.HandleFunc("/{userpropname}", appRoutes.checkUserHasPrivilegeMiddleware(common.SecurityUserPropertyDefinitionRemove)(appRoutes.removeUserProp)).Methods("DELETE")
 }
 
-func getAllUserProps(w http.ResponseWriter, r *http.Request){
-	props,err:=model.GetUserPropertiesList(r.Context())
+func (appRoutes *AppRoutes)getAllUserProps(w http.ResponseWriter, r *http.Request){
+	props,err:=appRoutes.App.GetUserPropertiesList(r.Context())
 	if err!=nil{
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -50,7 +49,7 @@ func getAllUserProps(w http.ResponseWriter, r *http.Request){
 	sendJSONResponse(w, propsReturn, http.StatusOK)
 	
 }
-func getSingleUserProp(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)getSingleUserProp(w http.ResponseWriter, r *http.Request){
 
 	params:=mux.Vars(r)
 	userPropName, ok:=params["userpropname"]
@@ -58,7 +57,7 @@ func getSingleUserProp(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	userProp, err:=model.GetUserProperty(r.Context(), userPropName)
+	userProp, err:=appRoutes.App.GetUserProperty(r.Context(), userPropName)
 	if err!=nil {
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){
@@ -74,7 +73,7 @@ func getSingleUserProp(w http.ResponseWriter, r *http.Request){
 	userPropRequest.initFromDBUserProp(userProp)
 	sendJSONResponse(w, userPropRequest, http.StatusOK)
 }
-func addUserProp(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)addUserProp(w http.ResponseWriter, r *http.Request){
 	var userProp UserPropStructValue
 	if err:=json.NewDecoder(r.Body).Decode(&userProp); err!=nil{
 		w.WriteHeader(http.StatusInternalServerError)
@@ -82,7 +81,7 @@ func addUserProp(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	newUserProp, err:=model.AddUserProperty(r.Context(), userProp.Name, userProp.Mandatory, false,userprops.UserPropertyType(userProp.ValueType))
+	newUserProp, err:=appRoutes.App.AddUserProperty(r.Context(), userProp.Name, userProp.Mandatory, false,userprops.UserPropertyType(userProp.ValueType))
 	if err!=nil{
 		var alreadyExists common.AlreadyExistsError
 		if errors.As(err, &alreadyExists){
@@ -98,7 +97,7 @@ func addUserProp(w http.ResponseWriter, r *http.Request){
 	sendJSONResponse(w, userProp, http.StatusOK)
 }
 
-func updateUserProp(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)updateUserProp(w http.ResponseWriter, r *http.Request){
 	var userPropRequest UserPropStructValue
 	if err:=json.NewDecoder(r.Body).Decode(&userPropRequest); err!=nil{
 		w.WriteHeader(http.StatusInternalServerError)
@@ -112,7 +111,7 @@ func updateUserProp(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	
-	dbProp,  err:=model.UpdateUserProperty(r.Context(), userPropRequest.Name, userPropRequest.Mandatory)
+	dbProp,  err:=appRoutes.App.UpdateUserProperty(r.Context(), userPropRequest.Name, userPropRequest.Mandatory)
 	if err!=nil{
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){
@@ -129,7 +128,7 @@ func updateUserProp(w http.ResponseWriter, r *http.Request){
 	sendJSONResponse(w, userPropRequest, http.StatusOK)
 }
 
-func removeUserProp(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)removeUserProp(w http.ResponseWriter, r *http.Request){
 	
 	params:=mux.Vars(r)
 	roleName, ok:=params["userpropname"]
@@ -137,7 +136,7 @@ func removeUserProp(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err:=model.DeleteUserProperty(r.Context(), roleName)
+	err:=appRoutes.App.DeleteUserProperty(r.Context(), roleName)
 	if err!=nil{
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){

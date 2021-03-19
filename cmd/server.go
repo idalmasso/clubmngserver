@@ -7,13 +7,15 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/idalmasso/clubmngserver/app"
 	"github.com/idalmasso/clubmngserver/database"
 	"github.com/idalmasso/clubmngserver/database/memdb"
-	"github.com/idalmasso/clubmngserver/models"
 	"github.com/idalmasso/clubmngserver/routes"
 	"github.com/joho/godotenv"
 )
 
+//This will be different (i.e. a map of apps?)
+var clubApp app.App
 func main(){
 	err := godotenv.Load(".env")
 
@@ -24,9 +26,11 @@ func main(){
 	var memDB memdb.MemoryDB
 	var db database.ClubDb =   &memDB    // Verify that T implements I.
 	
-	models.InitDB(&db)
+	clubApp.InitDB(&db)
+	appRoutes:=routes.AppRoutes{App: clubApp}
+	
 	r := mux.NewRouter()
-	r=routes.AddRouteEndpoints(r)
+	r=appRoutes.AddRouteEndpoints(r)
 	fs := http.FileServer(http.Dir(os.Getenv("APP_DIR")))
 	r.PathPrefix("/").Handler(fs)
 	

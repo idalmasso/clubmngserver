@@ -9,7 +9,6 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/idalmasso/clubmngserver/common"
-	model "github.com/idalmasso/clubmngserver/models"
 )
 
 //UserPassword is the type the user send with username and password for authentication
@@ -23,11 +22,11 @@ type TokensResponse struct{
 	AuthorizationToken string `json:"authorization"`
 }
 
-var routesAuthProtected =[...]string {"/logout", "/token"}
+
 //addAuthRouterEndpoints add the actual endpoints for auth api
-func addAuthRouterEndpoints(r *mux.Router) {
+func (appRoutes *AppRoutes)addAuthRouterEndpoints(r *mux.Router) {
 	authRouter:=r.PathPrefix("/auth").Subrouter()
-	
+	var routesAuthProtected =[...]string {"/logout", "/token"}
 	reqRouter:=authRouter.MatcherFunc(func(r *http.Request,  rm *mux.RouteMatch) bool{
 		for _,route:=range(routesAuthProtected){
 			if strings.Contains(r.RequestURI, route){
@@ -37,22 +36,22 @@ func addAuthRouterEndpoints(r *mux.Router) {
 		return false
 	}).Subrouter()
 	
-	authRouter.HandleFunc("/login", login).Methods("POST")
-	authRouter.HandleFunc("/signin", createUser).Methods("POST")
-	reqRouter.Use(checkTokenAuthenticationHandler)
-	reqRouter.HandleFunc("/logout", logout).Methods("POST")
-	reqRouter.HandleFunc("/token", getTokenByToken).Methods("GET")
+	authRouter.HandleFunc("/login", appRoutes.login).Methods("POST")
+	authRouter.HandleFunc("/signin", appRoutes.createUser).Methods("POST")
+	reqRouter.Use(appRoutes.checkTokenAuthenticationHandler)
+	reqRouter.HandleFunc("/logout", appRoutes.logout).Methods("POST")
+	reqRouter.HandleFunc("/token", appRoutes.getTokenByToken).Methods("GET")
 }
 
 
-func login(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)login(w http.ResponseWriter, r *http.Request){
 	var u UserPassword 
 	err:=json.NewDecoder(r.Body).Decode(&u)
 	if err!=nil{
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	user,err:=model.FindUser(r.Context(), u.Username)
+	user,err:=appRoutes.App.FindUser(r.Context(), u.Username)
 	if err!=nil{
 		var notFoundError common.NotFoundError
 		if errors.As(err, &notFoundError){
@@ -63,7 +62,7 @@ func login(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	authent, author, err:=model.TryAuthenticate(r.Context(),*user, u.Password)
+	authent, author, err:=appRoutes.App.TryAuthenticate(r.Context(),*user, u.Password)
 	if err!=nil{
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -72,11 +71,11 @@ func login(w http.ResponseWriter, r *http.Request){
 	sendJSONResponse(w, t, http.StatusAccepted)
 }
 
-func logout(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)logout(w http.ResponseWriter, r *http.Request){
 	u :=context.Get(r, "user").(common.UserData)
 	var authenticationToken string
 	authenticationToken = context.Get(r, "authenticationtoken").(string)
-	err:=model.RemoveUserAuthentication(r.Context(), u.Username,authenticationToken)
+	err:=appRoutes.App.RemoveUserAuthentication(r.Context(), u.Username,authenticationToken)
 	if err!=nil{
 		if errors.As(err,&common.NotFoundError{}){
 			w.WriteHeader(http.StatusNotFound)
@@ -88,7 +87,7 @@ func logout(w http.ResponseWriter, r *http.Request){
 	w.WriteHeader(http.StatusOK)
 }
 
-func createUser(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)createUser(w http.ResponseWriter, r *http.Request){
 	var u UserPassword 
 	err:=json.NewDecoder(r.Body).Decode(&u)
 	if err!=nil{
@@ -98,7 +97,7 @@ func createUser(w http.ResponseWriter, r *http.Request){
 	var newUser *common.UserData
 	newUser.Username=u.Username
 
-	newUser, err=model.AddUser(r.Context(),*newUser, u.Password)
+	newUser, err=appRoutes.App.AddUser(r.Context(),*newUser, u.Password)
 	if err!=nil{
 		var alreadyExists common.AlreadyExistsError
 		if errors.As(err, &alreadyExists){
@@ -113,7 +112,7 @@ func createUser(w http.ResponseWriter, r *http.Request){
 }
 
 
-func getTokenByToken(w http.ResponseWriter, r *http.Request){
+func (appRoutes *AppRoutes)getTokenByToken(w http.ResponseWriter, r *http.Request){
 
 }
 

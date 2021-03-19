@@ -1,4 +1,4 @@
-package models
+package app
 
 import (
 	"context"
@@ -9,8 +9,9 @@ import (
 )
 
 func TestGetAllUsers(t *testing.T){
-		InitDB(&testDB)
-		users, err:=GetUsersList(context.Background())
+	var testApp App
+		testApp.InitDB(&testDatabase)
+		users, err:=testApp.GetUsersList(context.Background())
 		if err!=nil{
 			t.Errorf("Cannot get all users after initialization")
 		} else if len(users)!=len(usersToBeAdded){
@@ -22,14 +23,14 @@ func TestGetAllUsers(t *testing.T){
 					t.Fatalf("Find user %s in db users but not in initialized ones: %v", user.Username, usersToBeAdded)
 				}
 			}
-			_,err=AddUser(context.Background(), common.UserData{Username: "user01"}, "Abcd")
+			_,err=testApp.AddUser(context.Background(), common.UserData{Username: "user01"}, "Abcd")
 			t.Cleanup(func(){
-				testDB.RemoveUser(context.Background(),common.UserData{Username: "user01"})
+				testApp.db.RemoveUser(context.Background(),common.UserData{Username: "user01"})
 			})
 			if err!=nil{
 				t.Errorf("Cannot add one user after initialization")
 			}
-			users, err=GetUsersList(context.Background())
+			users, err=testApp.GetUsersList(context.Background())
 			if err!=nil{
 				t.Errorf("Cannot get all users after initialization and added 1")
 			} else if len(users)!=len(usersToBeAdded)+1{
@@ -46,10 +47,11 @@ func TestGetAllUsers(t *testing.T){
 	
 }
 func TestFindSingleUser(t *testing.T){
-		InitDB(&testDB)
+	var testApp App
+		testApp.InitDB(&testDatabase)
 		t.Run("Get all users initialization one by one", func(t *testing.T){
 			for userName, passRole:=range(usersToBeAdded){
-				user, err:=FindUser(context.Background(), userName)
+				user, err:=testApp.FindUser(context.Background(), userName)
 				if err!=nil{
 					t.Fatalf("Cannot get user %s", user)
 				}
@@ -60,13 +62,13 @@ func TestFindSingleUser(t *testing.T){
 					t.Fatalf("User %s should not have role %s but %s", userName, user.Role, passRole.role)
 				}
 				
-				if err=checkUserPassword(context.Background(), user.Username, passRole.password); err!=nil{
+				if err=testApp.checkUserPassword(context.Background(), user.Username, passRole.password); err!=nil{
 					t.Fatalf("User cannot check old password or user %s", user.Username)
 				}
 			}
 		})
 		t.Run("Get one user not existent", func(t *testing.T){
-			user, err:=FindUser(context.Background(), "NotExistentUser")
+			user, err:=testApp.FindUser(context.Background(), "NotExistentUser")
 			var notFoundError common.NotFoundError
 			if err==nil{
 				t.Errorf("Error get User nil")
@@ -77,22 +79,22 @@ func TestFindSingleUser(t *testing.T){
 			}
 		})
 		t.Run("Get one user after having added it", func(t *testing.T){
-			_,err:=AddUser(context.Background(), common.UserData{Username: "user01"}, "Abcd" )
+			_,err:=testApp.AddUser(context.Background(), common.UserData{Username: "user01"}, "Abcd" )
 	
 			t.Cleanup(func(){
-				testDB.RemoveUser(context.Background(), common.UserData{Username: "user01"})
+				testApp.db.RemoveUser(context.Background(), common.UserData{Username: "user01"})
 			})
 			if err!=nil{
 				t.Fatal("Cannot run test, cannot add user user01")
 			}
-			user, err:=FindUser(context.Background(), "user01")
+			user, err:=testApp.FindUser(context.Background(), "user01")
 			if err!=nil{
 				t.Fatalf("Error in FindUser: %v", err)
 			}
 			if user.Username!="user01"{
 				t.Fatalf("Role name is '%s', not 'user01'", user.Username)
 			}
-			if err=checkUserPassword(context.Background(), user.Username, "Abcd"); err!=nil{
+			if err=testApp.checkUserPassword(context.Background(), user.Username, "Abcd"); err!=nil{
 				t.Fatalf("User cannot check old password or user %s", user.Username)
 			}
 		})
@@ -112,15 +114,16 @@ var addUserTestSet= []addUserTest{
 
 
 func TestAddUser(t *testing.T){
-	InitDB(&testDB)
+	var testApp App
+	testApp.InitDB(&testDatabase)
 	for _, test:=range(addUserTestSet){
 		t.Run(test.testName, func (t *testing.T){
-			user, err:=AddUser(context.Background(), common.UserData{Username:test.userToAdd}, "PasswordTest")
+			user, err:=testApp.AddUser(context.Background(), common.UserData{Username:test.userToAdd}, "PasswordTest")
 			if  test.resultError{
 				if err==nil {
 					if user!=nil{
 						t.Cleanup(func(){
-							testDB.RemoveUser(context.Background(), *user)
+							testApp.db.RemoveUser(context.Background(), *user)
 						})
 					}
 					t.Fatal("Expected test to give error but not")
@@ -131,14 +134,14 @@ func TestAddUser(t *testing.T){
 				return
 			}
 			t.Cleanup(func(){
-				testDB.RemoveUser(context.Background(), *user)
+				testApp.db.RemoveUser(context.Background(), *user)
 			})
 			if err!=nil{
 				t.Fatalf("Eexpected test to not give error but it has given")
 			} else if user.Username!=test.userToAdd {
 				t.Fatalf("Wrong inserted username, %s instead of %s", user.Username, test.userToAdd)
 			} 
-			if err=checkUserPassword(context.Background(), user.Username, "PasswordTest");err!=nil{
+			if err=testApp.checkUserPassword(context.Background(), user.Username, "PasswordTest");err!=nil{
 				t.Fatalf("Cannot check password after inserted")
 			}
 		
@@ -147,16 +150,17 @@ func TestAddUser(t *testing.T){
 }
 
 func TestTryAuthenticate(t *testing.T){
-		InitDB(&testDB)
-		user,err:=AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
+	var testApp App
+		testApp.InitDB(&testDatabase)
+		user,err:=testApp.AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
 		if err!=nil{
 			t.Fatalf("Cannot create test user")
 		}
 		t.Cleanup(func(){
-			db.RemoveUser(context.Background(), *user)
+			testApp.db.RemoveUser(context.Background(), *user)
 		})
 		t.Run("Try user authentication with correct password",func(t *testing.T){
-			auth, author, err:=TryAuthenticate(context.Background(), *user,"Abcd")
+			auth, author, err:=testApp.TryAuthenticate(context.Background(), *user,"Abcd")
 			if err!=nil{
 				t.Fatalf("Error in try authentication,not expected")
 			}
@@ -165,7 +169,7 @@ func TestTryAuthenticate(t *testing.T){
 			}
 		})
 		t.Run("Try user authentication with incorrect password",func(t *testing.T){
-			auth, author, err:=TryAuthenticate(context.Background(), *user,"Popopo")
+			auth, author, err:=testApp.TryAuthenticate(context.Background(), *user,"Popopo")
 			if err==nil{
 				t.Fatalf("No error in try authentication,expected one")
 			}
@@ -177,38 +181,39 @@ func TestTryAuthenticate(t *testing.T){
 }
 
 func TestCheckTokenAndGetAuthenticationAuthorization(t *testing.T){
-	InitDB(&testDB)
-	user,err:=AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
+	var testApp App
+	testApp.InitDB(&testDatabase)
+	user,err:=testApp.AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
 	if err!=nil{
 		t.Fatalf("Cannot create test user")
 	}
 	t.Cleanup(func(){
-		testDB.RemoveUser(context.Background(), *user)
+		testApp.db.RemoveUser(context.Background(), *user)
 	})
-	auth, author, err:=TryAuthenticate(context.Background(), *user,"Abcd")
+	auth, author, err:=testApp.TryAuthenticate(context.Background(), *user,"Abcd")
 	if err!=nil{
 		t.Fatalf("Error in try authentication,not expected")
 	}
 	t.Run("Try check token authentication with correct authentication token",func(t *testing.T){
-		_, ok:=CheckToken(auth, false)
+		_, ok:=testApp.CheckToken(auth, false)
 		if !ok{
 			t.Fatalf("Error in check token,not expected")
 		}
 	})
 	t.Run("Try check token authentication with incorrect authentication token(use authorization token)",func(t *testing.T){
-		_, ok:=CheckToken(author, false)
+		_, ok:=testApp.CheckToken(author, false)
 		if ok{
 			t.Fatalf("No error in check token, expected one")
 		}
 	})
 	t.Run("Try check token authentication with correct authorization token",func(t *testing.T){
-		_, ok:=CheckToken(author, true)
+		_, ok:=testApp.CheckToken(author, true)
 		if !ok{
 			t.Fatalf("Error in check token,not expected")
 		}
 	})
 	t.Run("Try check token authentication with incorrect authorization token(use authentication token)",func(t *testing.T){
-		_, ok:=CheckToken(auth, true)
+		_, ok:=testApp.CheckToken(auth, true)
 		if ok{
 			t.Fatalf("No error in check token, expected one")
 		}
@@ -217,30 +222,31 @@ func TestCheckTokenAndGetAuthenticationAuthorization(t *testing.T){
 }
 //TODO: Refactor this test, and also the function
 func TestGetNewAuthorizationToken(t *testing.T){
-	InitDB(&testDB)
-	user,err:=AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
+	var testApp App
+	testApp.InitDB(&testDatabase)
+	user,err:=testApp.AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
 	if err!=nil{
 		t.Fatalf("Cannot create test user")
 	}
 	t.Cleanup(func(){
-		testDB.RemoveUser(context.Background(), *user)
+		testApp.db.RemoveUser(context.Background(), *user)
 	})
-	auth, author, err:=TryAuthenticate(context.Background(), *user,"Abcd")
+	auth, author, err:=testApp.TryAuthenticate(context.Background(), *user,"Abcd")
 	if err!=nil{
 		t.Fatalf("Error in try authentication,not expected")
 	}
 	t.Run("Try get token authorization with correct authentication token",func(t *testing.T){
-		author, err:=GetAuthorizationTokenForAuthenticationToken(context.Background(), auth, *user)
+		author, err:=testApp.GetAuthorizationTokenForAuthenticationToken(context.Background(), auth, *user)
 		if err!=nil{
 			t.Fatalf("Error in GetAuthorizationTokenForAuthenticationToken,not expected")
 		}
-		_, ok:=CheckToken(author, true)
+		_, ok:=testApp.CheckToken(author, true)
 		if !ok{
 			t.Fatalf("Error in check token,not expected")
 		}
 	})
 	t.Run("Try get token authorization with incorrect authentication token",func(t *testing.T){
-		_, err:=GetAuthorizationTokenForAuthenticationToken(context.Background(), author, *user)
+		_, err:=testApp.GetAuthorizationTokenForAuthenticationToken(context.Background(), author, *user)
 		if err!=nil{
 			t.Fatalf("No error in GetAuthorizationTokenForAuthenticationToken, expected")
 		}
@@ -366,20 +372,21 @@ var testIsValidTokenSet = []testIsValidToken{
 	},
 }
 func TestIsValidTokenForUser(t *testing.T){
-	InitDB(&testDB)
-	user,err:=AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
+	var testApp App
+	testApp.InitDB(&testDatabase)
+	user,err:=testApp.AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
 	if err!=nil{
 		t.Fatalf("Cannot create user01 user")
 	}
-	user2,err:=AddUser(context.Background(), common.UserData{Username:"user02"}, "Abcd")
+	user2,err:=testApp.AddUser(context.Background(), common.UserData{Username:"user02"}, "Abcd")
 	if err!=nil{
 		t.Fatalf("Cannot create user02 user")
 	}
 	t.Cleanup(func(){
-		testDB.RemoveUser(context.Background(), *user)
-		testDB.RemoveUser(context.Background(), *user2)
+		testApp.db.RemoveUser(context.Background(), *user)
+		testApp.db.RemoveUser(context.Background(), *user2)
 	})
-	auth, author, err:=TryAuthenticate(context.Background(), *user,"Abcd")
+	auth, author, err:=testApp.TryAuthenticate(context.Background(), *user,"Abcd")
 	if err!=nil{
 		t.Fatalf("Error in try authentication,not expected")
 	}
@@ -390,7 +397,7 @@ func TestIsValidTokenForUser(t *testing.T){
 				tokenToUse=author
 			}
 
-			ok, err:=IsValidTokenForUser(context.Background(),test.userToTest,tokenToUse, !test.testAgainstTokenAuth)
+			ok, err:=testApp.IsValidTokenForUser(context.Background(),test.userToTest,tokenToUse, !test.testAgainstTokenAuth)
 			if test.expectError{
 				if err==nil{
 					t.Fatal("Expected error, but not got one")
@@ -413,38 +420,39 @@ func TestIsValidTokenForUser(t *testing.T){
 		})
 	}
 
-	ok, err:=IsValidTokenForUser(context.Background(),"user01",author, true)
+	ok, err:=testApp.IsValidTokenForUser(context.Background(),"user01",author, true)
 	if !ok || err!=nil{
 		t.Fatalf("Error in check authorization token,not expected")
 	}
-	ok, err=IsValidTokenForUser(context.Background(),"user01",auth, false)
+	ok, err=testApp.IsValidTokenForUser(context.Background(),"user01",auth, false)
 	if !ok || err!=nil{
 		t.Fatalf("Error in check authentication token,not expected")
 	}
 }
 func TestRemoveUserAuth(t *testing.T){
-	InitDB(&testDB)
-	user,err:=AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
+	var testApp App
+	testApp.InitDB(&testDatabase)
+	user,err:=testApp.AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
 	if err!=nil{
 		t.Fatalf("Cannot create test user")
 	}
 	t.Cleanup(func(){
-		testDB.RemoveUser(context.Background(), *user)
+		testApp.db.RemoveUser(context.Background(), *user)
 	})
-	auth, author, err:=TryAuthenticate(context.Background(), *user,"Abcd")
+	auth, author, err:=testApp.TryAuthenticate(context.Background(), *user,"Abcd")
 	if err!=nil{
 		t.Fatalf("Error in try authentication,not expected")
 	}
-	ok, err:=IsValidTokenForUser(context.Background(),"user01",author, true)
+	ok, err:=testApp.IsValidTokenForUser(context.Background(),"user01",author, true)
 	if !ok || err!=nil{
 		t.Fatalf("Error in check authorization token,not expected")
 	}
-	ok, err=IsValidTokenForUser(context.Background(),"user01",auth, false)
+	ok, err=testApp.IsValidTokenForUser(context.Background(),"user01",auth, false)
 	if !ok || err!=nil{
 		t.Fatalf("Error in check authentication token,not expected")
 	}
 	t.Run("Remove auth of a not existing user", func(t *testing.T){
-		err=RemoveUserAuthentication(context.Background(), "user02", auth)
+		err=testApp.RemoveUserAuthentication(context.Background(), "user02", auth)
 		if err==nil{
 			t.Fatal("Expected error, but no")
 		}
@@ -453,16 +461,16 @@ func TestRemoveUserAuth(t *testing.T){
 		}
 	})
 	t.Run("Remove auth of the existing user", func(t *testing.T){
-		err=RemoveUserAuthentication(context.Background(), "user01", auth)
+		err=testApp.RemoveUserAuthentication(context.Background(), "user01", auth)
 		if err!=nil{
 			t.Fatal("Not expected error but got one")
 		}
-		ok, _:=IsValidTokenForUser(context.Background(),"user01",author, true)
+		ok, _:=testApp.IsValidTokenForUser(context.Background(),"user01",author, true)
 
 		if ok {
 			t.Fatalf("Error in check authorization token,not expected")
 		}
-		ok, err=IsValidTokenForUser(context.Background(),"user01",auth, false)
+		ok, err=testApp.IsValidTokenForUser(context.Background(),"user01",auth, false)
 		if ok {
 			t.Fatalf("Error in check authentication token,not expected")
 		}
@@ -470,32 +478,33 @@ func TestRemoveUserAuth(t *testing.T){
 }
 
 func TestChangePassword(t *testing.T){
-	InitDB(&testDB)
-	user,err:=AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
+	var testApp App
+	testApp.InitDB(&testDatabase)
+	user,err:=testApp.AddUser(context.Background(), common.UserData{Username:"user01"}, "Abcd")
 	if err!=nil{
 		t.Fatalf("Cannot create test user")
 	}
 	t.Cleanup(func(){
-		testDB.RemoveUser(context.Background(), *user)
+		testApp.db.RemoveUser(context.Background(), *user)
 	})
 	t.Run("Test change password of the user", func(t *testing.T){
-		_, err:=ChangePassword(context.Background(), "user01", "NewPassword")
+		_, err:=testApp.ChangePassword(context.Background(), "user01", "NewPassword")
 		if err!=nil{
 			t.Fatalf("Got error, should not: %s", err.Error())
 		}
 		//Check old password
-		err=checkUserPassword(context.Background(), "user01", "Abcd")
+		err=testApp.checkUserPassword(context.Background(), "user01", "Abcd")
 		if err==nil{
 			t.Fatalf("Got no error, should have because old password")
 		}
 		//Check new password
-		err=checkUserPassword(context.Background(), "user01", "NewPassword")
+		err=testApp.checkUserPassword(context.Background(), "user01", "NewPassword")
 		if err!=nil{
 			t.Fatalf("Got error, should not: %s", err.Error())
 		}
 	})
 	t.Run("Test change password of another user", func(t *testing.T){
-		_, err:=ChangePassword(context.Background(), "user02", "NewPassword")
+		_, err:=testApp.ChangePassword(context.Background(), "user02", "NewPassword")
 		if err==nil{
 			t.Fatalf("Got no error, should have")
 		}
